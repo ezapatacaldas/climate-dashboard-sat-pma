@@ -1,0 +1,636 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #131a26;
+  --card-bg: rgba(30, 41, 59, 0.45);
+  --card-border: rgba(255, 255, 255, 0.08);
+  
+  --primary: #10b981; /* Esmeralda para Amazonas */
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  --secondary: #0284c7; /* Azul Caquetá */
+  --secondary-glow: rgba(2, 132, 199, 0.15);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dark: #64748b;
+  
+  --font-family: 'Outfit', sans-serif;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --card-bg: rgba(241, 245, 249, 0.85);
+  --card-border: rgba(15, 23, 42, 0.08);
+  
+  --primary: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.1);
+  --secondary: #0284c7;
+  --secondary-glow: rgba(2, 132, 199, 0.1);
+  
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dark: #64748b;
+}
+
+body, header, aside, main, .dashboard-panel, .community-btn, table, th, td, input, label, button, .theme-toggle-btn {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.05) 0px, transparent 50%);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+body.light-theme {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.03) 0px, transparent 50%);
+}
+
+/* Header premium */
+header {
+  background: rgba(11, 15, 25, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--card-border);
+  padding: 1.25rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+body.light-theme header {
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.logo-icon svg {
+  fill: #fff;
+  width: 24px;
+  height: 24px;
+}
+
+.logo-text h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #ffffff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+body.light-theme .logo-text h1 {
+  background: linear-gradient(to right, #0f172a, #475569);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo-text p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.theme-toggle-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.light-theme .theme-toggle-btn:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-main);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+.theme-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.5s ease;
+}
+
+.theme-toggle-btn:hover svg {
+  transform: rotate(45deg);
+}
+
+.header-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--primary);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 12px var(--primary); }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+/* Layout principal */
+.main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  flex: 1;
+  width: 100%;
+}
+
+/* Sidebar / Filtros */
+.sidebar {
+  background: rgba(19, 26, 38, 0.6);
+  border-right: 1px solid var(--card-border);
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+body.light-theme .sidebar {
+  background: rgba(241, 245, 249, 0.5);
+}
+
+/* Selector de fechas */
+.date-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-input-group label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.date-input-group input[type="date"] {
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  color: var(--text-main);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  outline: none;
+  transition: var(--transition);
+}
+
+body.light-theme .date-input-group input[type="date"] {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+.date-input-group input[type="date"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.filter-section h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.community-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.community-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.community-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.community-btn.active {
+  color: var(--text-main);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.02);
+}
+
+.community-btn[data-dept="Amazonas"].active {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.community-btn[data-dept="Caquetá"].active {
+  border-color: var(--secondary);
+  background: var(--secondary-glow);
+}
+
+.community-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+
+.community-btn[data-dept="Amazonas"].active .community-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--primary);
+}
+
+.community-btn[data-dept="Caquetá"].active .community-badge {
+  background: rgba(2, 132, 199, 0.2);
+  color: var(--secondary);
+}
+
+/* Área de contenido */
+.content-area {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 77px);
+}
+
+/* Tablero de KPIs */
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.kpi-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(8px);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: transparent;
+  transition: var(--transition);
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.kpi-card[data-style="amazonas"]:hover::before {
+  background: var(--primary);
+}
+
+.kpi-card[data-style="caqueta"]:hover::before {
+  background: var(--secondary);
+}
+
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.kpi-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.kpi-icon {
+  color: var(--text-muted);
+}
+
+.kpi-card[data-style="amazonas"] .kpi-icon {
+  color: var(--primary);
+}
+
+.kpi-card[data-style="caqueta"] .kpi-icon {
+  color: var(--secondary);
+}
+
+.kpi-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-desc {
+  font-size: 0.8rem;
+  color: var(--text-dark);
+}
+
+/* Grid de Mapa y Gráficos */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(8px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 1rem;
+}
+
+.panel-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-title svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Contenedor del Mapa */
+#map-container {
+  height: 380px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+}
+
+/* Ajustes oscuros para el mapa de Leaflet */
+.leaflet-container {
+  background: #0f172a !important;
+}
+
+.leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+}
+
+body.light-theme .leaflet-container {
+  background: #f1f5f9 !important;
+}
+
+body.light-theme .leaflet-tile {
+  filter: none !important;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--bg-secondary) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.light-theme .leaflet-popup-content-wrapper, body.light-theme .leaflet-popup-tip {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+.popup-info h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-main);
+}
+
+body.light-theme .popup-info h4 {
+  color: #0f172a !important;
+}
+
+.popup-info p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Gráficos */
+.chart-container {
+  position: relative;
+  height: 380px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Panel Comparativo inferior */
+.full-panel {
+  grid-column: 1 / -1;
+}
+
+.comparison-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+th, td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+th {
+  background: rgba(19, 26, 38, 0.4);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+body.light-theme th {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+body.light-theme tr:hover td {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.trend-up {
+  color: #ef4444;
+}
+
+.trend-down {
+  color: #3b82f6;
+}
+
+.dept-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dept-badge[data-dept="Amazonas"] {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--primary);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dept-badge[data-dept="Caquetá"] {
+  background: rgba(2, 132, 199, 0.15);
+  color: var(--secondary);
+  border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--card-border);
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  background: var(--bg-primary);
+  margin-top: auto;
+}
+
+/* Responsividad para layout principal */
+@media (max-width: 900px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .content-area {
+    max-height: none;
+  }
+}
