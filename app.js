@@ -1,12 +1,115 @@
 // Tablero de monitoreo climático comunitario - SAT - PMA
 // Lógica de la aplicación
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Verificar que los datos estén cargados
-  if (typeof CLIMATE_DATA === 'undefined') {
-    console.error('Error: CLIMATE_DATA no está definido.');
-    document.getElementById('header-status-text').textContent = 'Error al cargar los datos';
-    document.getElementById('header-status-text').parentElement.querySelector('.pulse-dot').style.backgroundColor = '#ef4444';
+document.addEventListener('DOMContentLoaded', async () => {
+  // ─── Fuentes de Datos Google Sheets ──────────────────────────────────────────
+  let CLIMATE_DATA = {};
+  
+  const GOOGLE_SHEETS = [
+    {
+      name: "Nuevo Paraíso",
+      dept: "Amazonas",
+      lat: -3.758222,
+      lon: -70.402,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTn81KX0w9iczQV6Vy88dNP0JR_45_lSNKwqLHANTJpk2BjJgQVBJHcGN7pNLoDCw/pub?output=csv"
+    },
+    {
+      name: "Santa Sofía",
+      dept: "Amazonas",
+      lat: -4.006722,
+      lon: -70.132833,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSydPgLqNepElqO674k-OQ0qZRjC8PuswJwBenqt4G9nSDI_wl9o4XeFdrI0R0tA/pub?output=csv"
+    },
+    {
+      name: "San Miguel",
+      dept: "Caquetá",
+      lat: 1.12525,
+      lon: -76.237722,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTN9yuTNqMhhify9Bp98E6yW0-ITR0yeT--RkeR_P164Ym20MVzOF4LllQndnnd9A/pub?output=csv"
+    },
+    {
+      name: "La Primavera",
+      dept: "Caquetá",
+      lat: 1.153083,
+      lon: -76.210389,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGva9izFfN1OCRtKID64d6lYbeJY7erz-WuZyBKxub3jh-wJDfgdpCNemt64_N2Q/pub?output=csv"
+    }
+  ];
+
+  function parseVal(val) {
+    if (val === undefined || val === null || val.trim() === '') return null;
+    const num = parseFloat(val);
+    return isNaN(num) ? null : num;
+  }
+
+  function parseCSVDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.trim().split('/');
+    if (parts.length === 3) {
+      const month = parts[0].padStart(2, '0');
+      const day = parts[1].padStart(2, '0');
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+    return dateStr;
+  }
+
+  const statusText = document.getElementById('header-status-text');
+  const pulseDot = statusText.parentElement.querySelector('.pulse-dot');
+  
+  statusText.textContent = 'Sincronizando con Google Sheets...';
+  pulseDot.style.backgroundColor = '#fbbf24';
+
+  try {
+    const fetchPromises = GOOGLE_SHEETS.map(sheet => {
+      return new Promise((resolve, reject) => {
+        Papa.parse(sheet.url, {
+          download: true,
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            const datos = results.data
+              .filter(row => row.Fecha || row.fecha) // Tolerar "Fecha" o "fecha"
+              .map(row => {
+                const rawDate = row.Fecha || row.fecha;
+                const p = row.prec || row.Precipitacion || row.precipitacion;
+                const tmin = row.tmin || row.Tmin;
+                const tmax = row.tmax || row.Tmax;
+
+                return {
+                  fecha: parseCSVDate(rawDate),
+                  precipitacion: parseVal(p),
+                  tmin: parseVal(tmin),
+                  tmax: parseVal(tmax)
+                };
+              });
+            resolve({ sheetInfo: sheet, datos: datos });
+          },
+          error: function(err) {
+            reject(err);
+          }
+        });
+      });
+    });
+
+    const allData = await Promise.all(fetchPromises);
+    
+    allData.forEach(item => {
+      CLIMATE_DATA[item.sheetInfo.name] = {
+        departamento: item.sheetInfo.dept,
+        lat: item.sheetInfo.lat,
+        lon: item.sheetInfo.lon,
+        datos: item.datos
+      };
+    });
+
+    statusText.textContent = 'Conectado a Google Sheets en tiempo real';
+    pulseDot.style.backgroundColor = '#10b981';
+
+  } catch (err) {
+    console.error('Error al cargar datos desde Google Sheets:', err);
+    statusText.textContent = 'Error al conectar con Google Sheets';
+    pulseDot.style.backgroundColor = '#ef4444';
     return;
   }
 
