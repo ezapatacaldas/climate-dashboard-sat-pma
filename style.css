@@ -87,6 +87,76 @@ body.light-theme header {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
 }
 
+/* Banner introductorio */
+.intro-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(2, 132, 199, 0.06));
+  border-bottom: 1px solid var(--card-border);
+  border-left: 4px solid;
+  border-image: linear-gradient(to bottom, var(--primary), var(--secondary)) 1;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  max-height: 300px;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  opacity: 1;
+}
+
+.intro-banner.collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-bottom: none;
+}
+
+body.light-theme .intro-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04), rgba(2, 132, 199, 0.04));
+}
+
+.intro-content {
+  flex: 1;
+}
+
+.intro-content p {
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.intro-content strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.intro-close-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+  margin-top: 2px;
+}
+
+.intro-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+body.light-theme .intro-close-btn:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-main);
+}
+
 .logo-container {
   display: flex;
   align-items: center;

@@ -23,6 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeToggleBtn  = document.getElementById('theme-toggle');
   const startDateInput  = document.getElementById('start-date');
   const endDateInput    = document.getElementById('end-date');
+  const introBanner     = document.getElementById('intro-banner');
+  const introCloseBtn   = document.getElementById('intro-close-btn');
+
+  // Botón de colapsar banner introductorio
+  if (introCloseBtn && introBanner) {
+    introCloseBtn.addEventListener('click', () => {
+      introBanner.classList.add('collapsed');
+    });
+  }
 
   // ─── Estado global ────────────────────────────────────────────────────────────
   let mapInstance       = null;
