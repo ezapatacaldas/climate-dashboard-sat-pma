@@ -128,6 +128,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const endDateInput    = document.getElementById('end-date');
   const introBanner     = document.getElementById('intro-banner');
   const introCloseBtn   = document.getElementById('intro-close-btn');
+  const mobileMenuBtn   = document.getElementById('mobile-menu-btn');
+  const mobileCloseBtn  = document.getElementById('mobile-close-btn');
+  const sidebarOverlay  = document.getElementById('sidebar-overlay');
+  const sidebar         = document.getElementById('sidebar');
 
   // Botón de colapsar banner introductorio
   if (introCloseBtn && introBanner) {
@@ -135,6 +139,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       introBanner.classList.add('collapsed');
     });
   }
+
+  // ─── Lógica menú móvil ────────────────────────────────────────────────────────
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('active');
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('active');
+  }
+
+  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openSidebar);
+  if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', closeSidebar);
+  if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
   // ─── Estado global ────────────────────────────────────────────────────────────
   let mapInstance       = null;
@@ -204,6 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.classList.add('active');
         currentViewState = comunidad;
         renderDashboard();
+        closeSidebar(); // Cerrar menú en móvil al seleccionar
       });
 
       if (info.departamento === 'Amazonas') {
@@ -218,6 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnGlobal.classList.add('active');
       currentViewState = 'global';
       renderDashboard();
+      closeSidebar(); // Cerrar menú en móvil al seleccionar
     });
   }
 
