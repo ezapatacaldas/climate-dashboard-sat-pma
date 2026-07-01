@@ -502,6 +502,7 @@ body.light-theme .date-input-group input[type="date"] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
+  min-width: 0;
 }
 
 @media (max-width: 1200px) {
@@ -519,6 +520,8 @@ body.light-theme .date-input-group input[type="date"] {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0;
+  max-width: 100vw;
 }
 
 .panel-header {
@@ -604,6 +607,8 @@ body.light-theme .popup-info h4 {
   position: relative;
   height: 380px;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
