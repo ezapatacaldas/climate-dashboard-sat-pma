@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Botón de colapsar banner introductorio
   if (introCloseBtn && introBanner) {
     introCloseBtn.addEventListener('click', () => {
-      introBanner.classList.add('collapsed');
+      introBanner.classList.toggle('collapsed');
     });
   }
 
@@ -215,7 +215,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       btn.innerHTML = `
         <span>${comunidad}</span>
-        <span class="community-badge">${info.departamento}</span>
       `;
 
       btn.addEventListener('click', () => {

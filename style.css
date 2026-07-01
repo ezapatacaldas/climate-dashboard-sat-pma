@@ -97,18 +97,12 @@ body.light-theme header {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  max-height: 300px;
-  overflow: hidden;
-  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-  opacity: 1;
+  transition: padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .intro-banner.collapsed {
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  opacity: 0;
-  border-bottom: none;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 
 body.light-theme .intro-banner {
@@ -117,6 +111,15 @@ body.light-theme .intro-banner {
 
 .intro-content {
   flex: 1;
+  max-height: 300px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+}
+
+.intro-banner.collapsed .intro-content {
+  max-height: 0;
+  opacity: 0;
 }
 
 .intro-content p {
@@ -145,6 +148,14 @@ body.light-theme .intro-banner {
   outline: none;
   transition: var(--transition);
   margin-top: 2px;
+}
+
+.intro-close-btn svg {
+  transition: transform 0.4s ease;
+}
+
+.intro-banner.collapsed .intro-close-btn svg {
+  transform: rotate(180deg);
 }
 
 .intro-close-btn:hover {
@@ -881,5 +892,27 @@ body.light-theme .mobile-close-btn:hover {
   
   th, td {
     padding: 0.75rem 1rem;
+  }
+}
+
+/* Ocultar header e intro en móviles horizontales (landscape) para dar espacio al contenido */
+@media (max-width: 900px) and (orientation: landscape) {
+  header,
+  .intro-banner {
+    display: none !important;
+  }
+  
+  .content-area {
+    padding: 0.5rem;
+  }
+  
+  /* En horizontal, los gráficos pueden aprovechar más el ancho */
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  #map-container,
+  .chart-container {
+    height: 85vh; /* Ocupa casi toda la pantalla visible */
   }
 }
