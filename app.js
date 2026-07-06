@@ -75,12 +75,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const p = row.prec || row.Precipitacion || row.precipitacion;
                 const tmin = row.tmin || row.Tmin;
                 const tmax = row.tmax || row.Tmax;
+                const nivelRio = row.nivel_rio || row.nivelRio || row.nivel || row['nivel del rio'] || row.Nivel || row.Nivel_rio || '';
 
                 return {
                   fecha: parseCSVDate(rawDate),
                   precipitacion: parseVal(p),
                   tmin: parseVal(tmin),
-                  tmax: parseVal(tmax)
+                  tmax: parseVal(tmax),
+                  nivel_rio: typeof nivelRio === 'string' ? nivelRio.trim() : ''
                 };
               });
             resolve({ sheetInfo: sheet, datos: datos });
@@ -160,10 +162,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let tileLayerDark     = null;
   let tileLayerLight    = null;
   let markersGroup      = [];
-  let tempChartInstance = null;
-  let rainChartInstance = null;
-  let currentViewState  = 'global'; // 'global' o nombre de comunidad
-  let isLightTheme      = false;
+  let tempChartInstance  = null;
+  let rainChartInstance  = null;
+  let riverChartInstance = null;
+  let currentViewState   = 'global'; // 'global' o nombre de comunidad
+  let isLightTheme       = false;
 
   // ─── Utilidades de fecha ─────────────────────────────────────────────────────
   function getAllDates() {
@@ -746,6 +749,112 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ─── 6. Gráfico de Nivel del Río ────────────────────────────────────────────
+  function renderRiverChart() {
+    if (riverChartInstance) riverChartInstance.destroy();
+
+    const riverLegend   = document.getElementById('river-legend');
+    const riverNoData   = document.getElementById('river-no-data');
+    const riverLayout   = document.querySelector('.river-level-layout');
+    const riverTarget   = document.getElementById('river-target-name');
+    const riverCtx      = document.getElementById('riverChart').getContext('2d');
+
+    riverTarget.textContent = currentViewState === 'global' ? 'Todas las comunidades' : currentViewState;
+
+    // Colores y etiquetas de cada nivel
+    const niveles = [
+      { key: 'Alto',  label: 'Alto',  sub: 'Vega intermedia inundada',            color: '#1e3a8a', light: '#3b82f6' },
+      { key: 'Medio', label: 'Medio', sub: 'Vega sin inundación',                 color: '#0e7490', light: '#22d3ee' },
+      { key: 'Bajo',  label: 'Bajo',  sub: 'Vega visible y bancos de arena',      color: '#d97706', light: '#fbbf24' },
+    ];
+
+    // Acumular conteos según la vista
+    const conteos = { Alto: 0, Medio: 0, Bajo: 0 };
+
+    if (currentViewState === 'global') {
+      Object.values(CLIMATE_DATA).forEach(info => {
+        getFilteredData(info.datos).forEach(d => {
+          const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
+          if (conteos.hasOwnProperty(n)) conteos[n]++;
+        });
+      });
+    } else {
+      getFilteredData(CLIMATE_DATA[currentViewState].datos).forEach(d => {
+        const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
+        if (conteos.hasOwnProperty(n)) conteos[n]++;
+      });
+    }
+
+    const totalDias = Object.values(conteos).reduce((a, b) => a + b, 0);
+
+    // Si no hay ningún dato de nivel, mostrar mensaje
+    if (totalDias === 0) {
+      riverLayout.style.display = 'none';
+      riverNoData.style.display = 'block';
+      return;
+    }
+
+    riverLayout.style.display = 'flex';
+    riverNoData.style.display = 'none';
+
+    const { tickColor, legendColor } = getChartColors();
+    const useDark = !isLightTheme;
+
+    // Construir leyenda
+    riverLegend.innerHTML = '';
+    niveles.forEach(nv => {
+      const dotColor = useDark ? nv.color : nv.light;
+      const count    = conteos[nv.key];
+      const pct      = totalDias > 0 ? ((count / totalDias) * 100).toFixed(0) : 0;
+      const item     = document.createElement('div');
+      item.className = 'river-legend-item';
+      item.innerHTML = `
+        <div class="river-legend-dot" style="background:${dotColor};"></div>
+        <div class="river-legend-info">
+          <div class="river-legend-label">${nv.label}</div>
+          <div class="river-legend-sub">${nv.sub}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="river-legend-count" style="color:${dotColor};">${count}</div>
+          <div class="river-legend-days">${pct}% · días</div>
+        </div>
+      `;
+      riverLegend.appendChild(item);
+    });
+
+    // Gráfico Donut
+    riverChartInstance = new Chart(riverCtx, {
+      type: 'doughnut',
+      data: {
+        labels: niveles.map(nv => nv.label),
+        datasets: [{
+          data: niveles.map(nv => conteos[nv.key]),
+          backgroundColor: useDark
+            ? ['#1e3a8a', '#0e7490', '#d97706']
+            : ['#3b82f6', '#22d3ee', '#fbbf24'],
+          borderColor: 'transparent',
+          borderWidth: 0,
+          hoverOffset: 12
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.parsed} días (${totalDias > 0 ? ((ctx.parsed / totalDias) * 100).toFixed(0) : 0}%)`
+            },
+            bodyFont: { family: 'Outfit' },
+            titleFont: { family: 'Outfit', weight: '600' }
+          }
+        }
+      }
+    });
+  }
+
   // ─── 7. Cambio de tema ───────────────────────────────────────────────────────
   function applyTheme() {
     const body    = document.body;
@@ -774,6 +883,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Redibujar gráficos con nuevos colores
     renderCharts();
+    renderRiverChart();
   }
 
   themeToggleBtn.addEventListener('click', () => {
@@ -786,6 +896,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderKPIs();
     updateMap();
     renderCharts();
+    renderRiverChart();
     renderTable();
   }
 

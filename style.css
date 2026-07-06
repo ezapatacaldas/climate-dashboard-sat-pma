@@ -696,6 +696,119 @@ body.light-theme tr:hover td {
   border: 1px solid rgba(2, 132, 199, 0.3);
 }
 
+/* ─── Nivel del Río ─────────────────────────────────────────────────────── */
+.river-level-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  min-height: 280px;
+}
+
+.river-chart-wrapper {
+  position: relative;
+  width: 260px;
+  min-width: 220px;
+  height: 260px;
+  flex-shrink: 0;
+}
+
+.river-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
+.river-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  transition: var(--transition);
+}
+
+.river-legend-item:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.light-theme .river-legend-item:hover {
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+.river-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.river-legend-info {
+  flex: 1;
+}
+
+.river-legend-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.river-legend-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.river-legend-count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.river-legend-days {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.river-no-data {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+.river-no-data code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--primary);
+  border: 1px solid var(--card-border);
+}
+
+body.light-theme .river-no-data code {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+@media (max-width: 900px) {
+  .river-level-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  .river-chart-wrapper {
+    width: 200px;
+    height: 200px;
+    min-width: unset;
+  }
+  .river-legend {
+    width: 100%;
+  }
+}
+
 /* Footer */
 footer {
   text-align: center;
