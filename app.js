@@ -1,10 +1,10 @@
-// Tablero de monitoreo climático comunitario - SAT - PMA
+// Tablero de monitoreo climático y de nivel de ríos - SAT - PMA
 // Lógica de la aplicación
 
 document.addEventListener('DOMContentLoaded', async () => {
   // ─── Fuentes de Datos Google Sheets ──────────────────────────────────────────
   let CLIMATE_DATA = {};
-  
+
   const GOOGLE_SHEETS = [
     {
       name: "Nuevo Paraíso",
@@ -21,7 +21,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSydPgLqNepElqO674k-OQ0qZRjC8PuswJwBenqt4G9nSDI_wl9o4XeFdrI0R0tA/pub?output=csv"
     },
     {
-      name: "San Miguel",
+      name: "El Progreso",
+      dept: "Amazonas",
+      lat: -4.015389,
+      lon: -70.113250,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZ_gh8Kc8Ou8nxQt-Kmg9ePOkwBznvfDg2MJFnE9Niyo9mNBrsBvBcy4PlCow2Yg/pub?output=csv"
+    },
+    {
+      name: "Resguardo San Miguel",
       dept: "Caquetá",
       lat: 1.12525,
       lon: -76.237722,
@@ -33,8 +40,44 @@ document.addEventListener('DOMContentLoaded', async () => {
       lat: 1.153083,
       lon: -76.210389,
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGva9izFfN1OCRtKID64d6lYbeJY7erz-WuZyBKxub3jh-wJDfgdpCNemt64_N2Q/pub?output=csv"
+    },
+    {
+      name: "Resguardo Yarinal",
+      dept: "Putumayo",
+      lat: 0.328119,
+      lon: -76.849465,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG0Evez5m07QZVBwM3GTFFM4u2kw8dOWdv_YKsUDsy-q8wEoIhiu6UZbJfimX4eg/pub?output=csv"
     }
   ];
+
+  // ─── Identidad visual por departamento ───────────────────────────────────────
+  const DEPT_META = {
+    'Amazonas': { color: '#10b981', glow: 'rgba(16,185,129,0.15)', fill: 'rgba(16,185,129,0.7)',  style: 'amazonas' },
+    'Caquetá':  { color: '#0284c7', glow: 'rgba(2,132,199,0.15)',  fill: 'rgba(2,132,199,0.7)',   style: 'caqueta'  },
+    'Putumayo': { color: '#8b5cf6', glow: 'rgba(139,92,246,0.15)', fill: 'rgba(139,92,246,0.7)',  style: 'putumayo' }
+  };
+  const DEPARTAMENTOS = ['Amazonas', 'Caquetá', 'Putumayo'];
+
+  function deptMeta(dept) {
+    return DEPT_META[dept] || DEPT_META['Amazonas'];
+  }
+
+  function isDeptView(state) {
+    return state.startsWith('dept:');
+  }
+
+  function deptOfView(state) {
+    return state.slice(5);
+  }
+
+  // Comunidades incluidas en la vista actual
+  function viewCommunities() {
+    if (isDeptView(currentViewState)) {
+      const dept = deptOfView(currentViewState);
+      return Object.keys(CLIMATE_DATA).filter(c => CLIMATE_DATA[c].departamento === dept);
+    }
+    return [currentViewState];
+  }
 
   function parseVal(val) {
     if (val === undefined || val === null || val.trim() === '') return null;
@@ -56,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const statusText = document.getElementById('header-status-text');
   const pulseDot = statusText.parentElement.querySelector('.pulse-dot');
-  
+
   statusText.textContent = 'Sincronizando con Google Sheets...';
   pulseDot.style.backgroundColor = '#fbbf24';
 
@@ -95,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     const allData = await Promise.all(fetchPromises);
-    
+
     allData.forEach(item => {
       CLIMATE_DATA[item.sheetInfo.name] = {
         departamento: item.sheetInfo.dept,
@@ -116,18 +159,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ─── Elementos del DOM ───────────────────────────────────────────────────────
+  const listDepartments = document.getElementById('list-departments');
   const listAmazonas    = document.getElementById('list-amazonas');
   const listCaqueta     = document.getElementById('list-caqueta');
-  const btnGlobal       = document.getElementById('btn-global');
+  const listPutumayo    = document.getElementById('list-putumayo');
   const kpisContainer   = document.getElementById('kpis-container');
   const mapTargetName   = document.getElementById('map-target-name');
   const tempTargetName  = document.getElementById('temp-target-name');
   const rainTargetName  = document.getElementById('rain-target-name');
+  const tempWarning     = document.getElementById('temp-warning');
+  const rainWarning     = document.getElementById('rain-warning');
   const dataTable       = document.getElementById('data-table');
   const tableTitle      = document.getElementById('table-title');
   const themeToggleBtn  = document.getElementById('theme-toggle');
   const startDateInput  = document.getElementById('start-date');
   const endDateInput    = document.getElementById('end-date');
+  const monthSelect     = document.getElementById('month-select');
   const introBanner     = document.getElementById('intro-banner');
   const introCloseBtn   = document.getElementById('intro-close-btn');
   const mobileMenuBtn   = document.getElementById('mobile-menu-btn');
@@ -165,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let tempChartInstance  = null;
   let rainChartInstance  = null;
   let riverChartInstance = null;
-  let currentViewState   = 'global'; // 'global' o nombre de comunidad
+  let currentViewState   = 'dept:Amazonas'; // 'dept:<Departamento>' o nombre de comunidad
   let isLightTheme       = false;
 
   // ─── Utilidades de fecha ─────────────────────────────────────────────────────
@@ -195,6 +242,172 @@ document.addEventListener('DOMContentLoaded', async () => {
     return datos.filter(d => d.fecha >= start && d.fecha <= end);
   }
 
+  // ─── Selector de mes ─────────────────────────────────────────────────────────
+  // Construye las opciones del selector a partir de los meses que tienen datos
+  function initMonthSelect() {
+    const monthsSet = new Set();
+    getAllDates().forEach(f => {
+      if (f && f.length >= 7) monthsSet.add(f.slice(0, 7)); // 'YYYY-MM'
+    });
+    const months = Array.from(monthsSet).sort();
+
+    monthSelect.innerHTML = '';
+
+    const optAll = document.createElement('option');
+    optAll.value = 'all';
+    optAll.textContent = 'Todo el periodo';
+    monthSelect.appendChild(optAll);
+
+    const optCustom = document.createElement('option');
+    optCustom.value = 'custom';
+    optCustom.textContent = 'Personalizado';
+    optCustom.hidden = true; // Solo se activa al modificar fechas manualmente
+    monthSelect.appendChild(optCustom);
+
+    months.forEach(ym => {
+      const [year, month] = ym.split('-');
+      const opt = document.createElement('option');
+      opt.value = ym;
+      const nombreMes = MESES_ES[parseInt(month, 10) - 1];
+      opt.textContent = `${nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)} de ${year}`;
+      monthSelect.appendChild(opt);
+    });
+
+    monthSelect.value = 'all';
+
+    monthSelect.addEventListener('change', () => {
+      const val = monthSelect.value;
+      if (val === 'custom') return;
+
+      if (val === 'all') {
+        startDateInput.value = startDateInput.min;
+        endDateInput.value   = endDateInput.max;
+      } else {
+        const [year, month] = val.split('-').map(n => parseInt(n, 10));
+        const firstDay = `${val}-01`;
+        const lastDay  = `${val}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+        // Ajustar a los límites del periodo con datos
+        startDateInput.value = firstDay < startDateInput.min ? startDateInput.min : firstDay;
+        endDateInput.value   = lastDay  > endDateInput.max   ? endDateInput.max   : lastDay;
+      }
+      renderDashboard();
+    });
+  }
+
+  // Al modificar fechas manualmente, el selector pasa a "Personalizado"
+  function syncMonthSelect() {
+    if (startDateInput.value === startDateInput.min && endDateInput.value === endDateInput.max) {
+      monthSelect.value = 'all';
+      return;
+    }
+    const startYM = startDateInput.value.slice(0, 7);
+    const endYM   = endDateInput.value.slice(0, 7);
+    if (startYM === endYM && [...monthSelect.options].some(o => o.value === startYM)) {
+      monthSelect.value = startYM;
+    } else {
+      monthSelect.value = 'custom';
+    }
+  }
+
+  // ─── Control de calidad de datos ─────────────────────────────────────────────
+  const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  // Umbrales de plausibilidad para temperaturas en la Amazonía colombiana (°C)
+  const TEMP_MIN_PLAUSIBLE = 10;
+  const TEMP_MAX_PLAUSIBLE = 45;
+
+  // Detecta registros de temperatura sospechosos: mínima mayor que máxima,
+  // o valores fuera del rango plausible.
+  function detectTempAnomalies(datos) {
+    let count = 0;
+    datos.forEach(d => {
+      const hasMin = d.tmin !== null && d.tmin !== undefined;
+      const hasMax = d.tmax !== null && d.tmax !== undefined;
+      if (hasMin && hasMax && d.tmin > d.tmax) { count++; return; }
+      if (hasMax && (d.tmax > TEMP_MAX_PLAUSIBLE || d.tmax < TEMP_MIN_PLAUSIBLE)) { count++; return; }
+      if (hasMin && (d.tmin > TEMP_MAX_PLAUSIBLE || d.tmin < TEMP_MIN_PLAUSIBLE)) { count++; }
+    });
+    return count;
+  }
+
+  // Detecta meses con más de tres días consecutivos sin datos para las variables
+  // indicadas. La evaluación se limita al periodo con registros de la comunidad
+  // (entre su primera y última fecha dentro del filtro activo).
+  function detectGapMonths(datos, fields) {
+    if (datos.length === 0) return [];
+
+    const validDates = new Set();
+    datos.forEach(d => {
+      const hasValue = fields.some(f => d[f] !== null && d[f] !== undefined && d[f] !== '');
+      if (hasValue && d.fecha) validDates.add(d.fecha);
+    });
+
+    const fechas = datos.map(d => d.fecha).filter(Boolean).sort();
+    if (fechas.length === 0) return [];
+
+    const startDate = new Date(fechas[0] + 'T00:00:00');
+    const endDate   = new Date(fechas[fechas.length - 1] + 'T00:00:00');
+
+    const gapMonths = new Set();
+    let streak = 0;
+    let streakMonths = new Set();
+
+    const closeStreak = () => {
+      if (streak > 3) streakMonths.forEach(m => gapMonths.add(m));
+      streak = 0;
+      streakMonths = new Set();
+    };
+
+    for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
+      const iso = dt.toISOString().slice(0, 10);
+      if (!validDates.has(iso)) {
+        streak++;
+        streakMonths.add(`${MESES_ES[dt.getMonth()]} de ${dt.getFullYear()}`);
+      } else {
+        closeStreak();
+      }
+    }
+    closeStreak();
+
+    return Array.from(gapMonths);
+  }
+
+  // Construye el texto de advertencia de un gráfico para la vista actual
+  function buildWarnings(fields, checkTemp) {
+    const messages = [];
+
+    viewCommunities().forEach(com => {
+      const datos = getFilteredData(CLIMATE_DATA[com].datos);
+      const prefix = isDeptView(currentViewState) ? `${com}: ` : '';
+
+      if (checkTemp) {
+        const anomalies = detectTempAnomalies(datos);
+        if (anomalies > 0) {
+          messages.push(`${prefix}${anomalies} registro${anomalies > 1 ? 's' : ''} de temperatura con valores atípicos (mínima mayor que la máxima o fuera del rango ${TEMP_MIN_PLAUSIBLE}–${TEMP_MAX_PLAUSIBLE} °C).`);
+        }
+      }
+
+      const gaps = detectGapMonths(datos, fields);
+      if (gaps.length > 0) {
+        messages.push(`${prefix}vacíos de más de tres días consecutivos sin datos en ${gaps.join(', ')}.`);
+      }
+    });
+
+    return messages;
+  }
+
+  function renderWarning(element, messages) {
+    if (!element) return;
+    if (messages.length === 0) {
+      element.style.display = 'none';
+      element.innerHTML = '';
+    } else {
+      element.style.display = 'block';
+      element.innerHTML = '⚠ ' + messages.join('<br>⚠ ');
+    }
+  }
+
   // ─── Colores de Chart.js según tema ──────────────────────────────────────────
   function getChartColors() {
     return {
@@ -205,10 +418,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ─── 1. Sidebar dinámico ─────────────────────────────────────────────────────
-  function initializeSidebar() {
-    listAmazonas.innerHTML = '';
-    listCaqueta.innerHTML  = '';
+  function setActiveButton(btn) {
+    document.querySelectorAll('.community-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
 
+  function initializeSidebar() {
+    listDepartments.innerHTML = '';
+    listAmazonas.innerHTML    = '';
+    listCaqueta.innerHTML     = '';
+    listPutumayo.innerHTML    = '';
+
+    // Botones de vista por departamento
+    DEPARTAMENTOS.forEach(dept => {
+      const comunidades = Object.keys(CLIMATE_DATA).filter(c => CLIMATE_DATA[c].departamento === dept);
+      if (comunidades.length === 0) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'community-btn';
+      btn.setAttribute('data-dept', dept);
+      btn.setAttribute('data-dept-view', dept);
+      btn.innerHTML = `
+        <span>${dept}</span>
+        <span class="community-badge">${comunidades.length} sitio${comunidades.length > 1 ? 's' : ''}</span>
+      `;
+
+      btn.addEventListener('click', () => {
+        setActiveButton(btn);
+        currentViewState = `dept:${dept}`;
+        renderDashboard();
+        closeSidebar();
+      });
+
+      listDepartments.appendChild(btn);
+
+      if (`dept:${dept}` === currentViewState) btn.classList.add('active');
+    });
+
+    // Botones de comunidades individuales
     Object.keys(CLIMATE_DATA).forEach(comunidad => {
       const info = CLIMATE_DATA[comunidad];
       const btn  = document.createElement('button');
@@ -221,8 +468,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
 
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.community-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        setActiveButton(btn);
         currentViewState = comunidad;
         renderDashboard();
         closeSidebar(); // Cerrar menú en móvil al seleccionar
@@ -230,17 +476,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (info.departamento === 'Amazonas') {
         listAmazonas.appendChild(btn);
-      } else {
+      } else if (info.departamento === 'Caquetá') {
         listCaqueta.appendChild(btn);
+      } else {
+        listPutumayo.appendChild(btn);
       }
-    });
-
-    btnGlobal.addEventListener('click', () => {
-      document.querySelectorAll('.community-btn').forEach(b => b.classList.remove('active'));
-      btnGlobal.classList.add('active');
-      currentViewState = 'global';
-      renderDashboard();
-      closeSidebar(); // Cerrar menú en móvil al seleccionar
     });
   }
 
@@ -275,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     Object.keys(CLIMATE_DATA).forEach(comunidad => {
       const info  = CLIMATE_DATA[comunidad];
       if (info.lat && info.lon) {
-        const color = info.departamento === 'Amazonas' ? '#10b981' : '#0284c7';
+        const color = deptMeta(info.departamento).color;
 
         const customIcon = L.divIcon({
           className: 'custom-marker',
@@ -315,7 +555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function refreshMarkerPopups() {
     markersGroup.forEach(({ name, marker }) => {
       const info  = CLIMATE_DATA[name];
-      const color = info.departamento === 'Amazonas' ? '#10b981' : '#0284c7';
+      const color = deptMeta(info.departamento).color;
       buildPopup(marker, name, info, color);
     });
   }
@@ -324,16 +564,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderKPIs() {
     kpisContainer.innerHTML = '';
 
-    if (currentViewState === 'global') {
+    if (isDeptView(currentViewState)) {
+      const dept        = deptOfView(currentViewState);
+      const styleType   = deptMeta(dept).style;
+      const comunidades = viewCommunities();
+
       // Acumular datos por comunidad (respetando filtro de fecha)
       let masLluviosaTotal    = 0;
-      let masLluviosaComunidad = '';
-      let totalPrecGeneral    = 0;
+      let masLluviosaComunidad = '—';
       let countRegistros      = 0;
       let allTmax             = [];
       let allTmin             = [];
 
-      Object.keys(CLIMATE_DATA).forEach(comunidad => {
+      comunidades.forEach(comunidad => {
         const datos = getFilteredData(CLIMATE_DATA[comunidad].datos);
 
         const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
@@ -342,7 +585,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         allTmin = allTmin.concat(tminList);
 
         const totalPrec = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
-        totalPrecGeneral += totalPrec;
         if (totalPrec > masLluviosaTotal) {
           masLluviosaTotal     = totalPrec;
           masLluviosaComunidad = comunidad;
@@ -358,25 +600,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         'Comunidad más lluviosa',
         `${masLluviosaComunidad}`,
         `${masLluviosaTotal.toFixed(1)} mm de lluvia acumulada`,
-        'caqueta',
+        styleType,
         `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5m0 13.5v1.5M5.25 5.25l1.05 1.05m10.5 10.5 1.05 1.05M3 12h1.5m13.5 0H21M5.25 18.75l1.05-1.05m10.5-10.5 1.05-1.05M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
       );
 
       // Card 2: Temperatura máxima promedio
       createKPICard(
-        'Temp. máx. promedio general',
+        'Temp. máx. promedio',
         `${avgTmax.toFixed(1)} °C`,
-        'Promedio de las máximas diarias de todas las comunidades',
-        'amazonas',
+        `Promedio de las máximas diarias de las comunidades de ${dept}`,
+        styleType,
         `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>`
       );
 
       // Card 3: Temperatura mínima promedio
       createKPICard(
-        'Temp. mín. promedio general',
+        'Temp. mín. promedio',
         `${avgTmin.toFixed(1)} °C`,
-        'Promedio de las mínimas diarias de todas las comunidades',
-        'caqueta',
+        `Promedio de las mínimas diarias de las comunidades de ${dept}`,
+        styleType,
         `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
       );
 
@@ -385,14 +627,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         'Días monitoreados (periodo)',
         `${countRegistros} días`,
         'Suma total de registros climáticos en el rango seleccionado',
-        'amazonas',
+        styleType,
         `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg>`
       );
 
     } else {
       // ─── Vista individual ────────────────────────────────────────────────────
       const info      = CLIMATE_DATA[currentViewState];
-      const styleType = info.departamento === 'Amazonas' ? 'amazonas' : 'caqueta';
+      const styleType = deptMeta(info.departamento).style;
       const datos     = getFilteredData(info.datos);
 
       const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
@@ -462,17 +704,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mapInstance) return;
     refreshMarkerPopups();
 
-    if (currentViewState === 'global') {
-      mapTargetName.textContent = 'Comparativa general';
-      mapTargetName.style.backgroundColor = 'rgba(255,255,255,0.08)';
-      mapTargetName.style.color = '#fff';
-      const latLons = Object.keys(CLIMATE_DATA).map(c => [CLIMATE_DATA[c].lat, CLIMATE_DATA[c].lon]);
-      mapInstance.fitBounds(latLons, { padding: [50, 50] });
+    if (isDeptView(currentViewState)) {
+      const dept = deptOfView(currentViewState);
+      const meta = deptMeta(dept);
+      mapTargetName.textContent = dept;
+      mapTargetName.style.backgroundColor = meta.glow;
+      mapTargetName.style.color = meta.color;
+      const latLons = viewCommunities().map(c => [CLIMATE_DATA[c].lat, CLIMATE_DATA[c].lon]);
+      if (latLons.length === 1) {
+        mapInstance.setView(latLons[0], 11, { animate: true, duration: 1 });
+      } else if (latLons.length > 1) {
+        mapInstance.fitBounds(latLons, { padding: [50, 50] });
+      }
     } else {
-      const info  = CLIMATE_DATA[currentViewState];
+      const info = CLIMATE_DATA[currentViewState];
+      const meta = deptMeta(info.departamento);
       mapTargetName.textContent = currentViewState;
-      mapTargetName.style.backgroundColor = info.departamento === 'Amazonas' ? 'rgba(16,185,129,0.15)' : 'rgba(2,132,199,0.15)';
-      mapTargetName.style.color = info.departamento === 'Amazonas' ? '#10b981' : '#0284c7';
+      mapTargetName.style.backgroundColor = meta.glow;
+      mapTargetName.style.color = meta.color;
       mapInstance.setView([info.lat, info.lon], 11, { animate: true, duration: 1 });
       const targetMarker = markersGroup.find(m => m.name === currentViewState);
       if (targetMarker) targetMarker.marker.openPopup();
@@ -488,11 +737,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rainCtx = document.getElementById('rainChart').getContext('2d');
     const { tickColor, gridColor, legendColor } = getChartColors();
 
-    tempTargetName.textContent = currentViewState === 'global' ? 'Comparación general' : currentViewState;
-    rainTargetName.textContent = currentViewState === 'global' ? 'Acumulado total' : currentViewState;
+    const deptView = isDeptView(currentViewState);
+    const viewLabel = deptView ? `${deptOfView(currentViewState)} · comparación` : currentViewState;
+    tempTargetName.textContent = viewLabel;
+    rainTargetName.textContent = deptView ? `${deptOfView(currentViewState)} · acumulado` : currentViewState;
 
-    if (currentViewState === 'global') {
-      const comunidades = Object.keys(CLIMATE_DATA);
+    // Mensajes de control de calidad bajo los títulos
+    renderWarning(tempWarning, buildWarnings(['tmin', 'tmax'], true));
+    renderWarning(rainWarning, buildWarnings(['precipitacion'], false));
+
+    if (deptView) {
+      const comunidades = viewCommunities();
 
       const tempsPromedio = comunidades.map(com => {
         const datos    = getFilteredData(CLIMATE_DATA[com].datos);
@@ -511,8 +766,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             {
               label: 'Temp. máx. promedio (°C)',
               data: tempsPromedio.map(t => parseFloat(t.avgMax.toFixed(1))),
-              backgroundColor: tempsPromedio.map(t => t.dept === 'Amazonas' ? 'rgba(16,185,129,0.7)' : 'rgba(2,132,199,0.7)'),
-              borderColor: tempsPromedio.map(t => t.dept === 'Amazonas' ? '#10b981' : '#0284c7'),
+              backgroundColor: tempsPromedio.map(t => deptMeta(t.dept).fill),
+              borderColor: tempsPromedio.map(t => deptMeta(t.dept).color),
               borderWidth: 1,
               borderRadius: 6
             },
@@ -552,8 +807,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           datasets: [{
             label: 'Precipitación acumulada (mm)',
             data: precipitaciones.map(p => parseFloat(p.total.toFixed(1))),
-            backgroundColor: precipitaciones.map(p => p.dept === 'Amazonas' ? 'rgba(16,185,129,0.8)' : 'rgba(2,132,199,0.8)'),
-            borderColor: precipitaciones.map(p => p.dept === 'Amazonas' ? '#10b981' : '#0284c7'),
+            backgroundColor: precipitaciones.map(p => deptMeta(p.dept).fill),
+            borderColor: precipitaciones.map(p => deptMeta(p.dept).color),
             borderWidth: 1,
             borderRadius: 8
           }]
@@ -572,8 +827,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       const info      = CLIMATE_DATA[currentViewState];
       const datos     = getFilteredData(info.datos);
-      const deptColor = info.departamento === 'Amazonas' ? '#10b981' : '#0284c7';
-      const deptGlow  = info.departamento === 'Amazonas' ? 'rgba(16,185,129,0.15)' : 'rgba(2,132,199,0.15)';
+      const meta      = deptMeta(info.departamento);
+      const deptColor = meta.color;
+      const deptGlow  = meta.glow;
 
       const fechas   = datos.map(d => d.fecha);
       const tmaxData = datos.map(d => d.tmax);
@@ -653,8 +909,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderTable() {
     dataTable.innerHTML = '';
 
-    if (currentViewState === 'global') {
-      tableTitle.textContent = 'Resumen comparativo de comunidades';
+    if (isDeptView(currentViewState)) {
+      const dept = deptOfView(currentViewState);
+      tableTitle.textContent = `Resumen comparativo de comunidades · ${dept}`;
 
       const headerRow = document.createElement('tr');
       headerRow.innerHTML = `
@@ -668,7 +925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
       dataTable.appendChild(headerRow);
 
-      Object.keys(CLIMATE_DATA).forEach(comunidad => {
+      viewCommunities().forEach(comunidad => {
         const info  = CLIMATE_DATA[comunidad];
         const datos = getFilteredData(info.datos);
 
@@ -749,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ─── 6. Gráfico de Nivel del Río ────────────────────────────────────────────
+  // ─── 7. Gráfico de Nivel del Río ─────────────────────────────────────────────
   function renderRiverChart() {
     if (riverChartInstance) riverChartInstance.destroy();
 
@@ -759,31 +1016,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const riverTarget   = document.getElementById('river-target-name');
     const riverCtx      = document.getElementById('riverChart').getContext('2d');
 
-    riverTarget.textContent = currentViewState === 'global' ? 'Todas las comunidades' : currentViewState;
+    riverTarget.textContent = isDeptView(currentViewState)
+      ? deptOfView(currentViewState)
+      : currentViewState;
 
     // Colores y etiquetas de cada nivel
     const niveles = [
-      { key: 'Alto',  label: 'Alto',  sub: 'Vega intermedia inundada',            color: '#1e3a8a', light: '#3b82f6' },
-      { key: 'Medio', label: 'Medio', sub: 'Vega sin inundación',                 color: '#0e7490', light: '#22d3ee' },
-      { key: 'Bajo',  label: 'Bajo',  sub: 'Vega visible y bancos de arena',      color: '#d97706', light: '#fbbf24' },
+      { key: 'Alto',  label: 'Alto',  color: '#1e3a8a', light: '#3b82f6' },
+      { key: 'Medio', label: 'Medio', color: '#0e7490', light: '#22d3ee' },
+      { key: 'Bajo',  label: 'Bajo',  color: '#d97706', light: '#fbbf24' },
     ];
 
     // Acumular conteos según la vista
     const conteos = { Alto: 0, Medio: 0, Bajo: 0 };
 
-    if (currentViewState === 'global') {
-      Object.values(CLIMATE_DATA).forEach(info => {
-        getFilteredData(info.datos).forEach(d => {
-          const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
-          if (conteos.hasOwnProperty(n)) conteos[n]++;
-        });
-      });
-    } else {
-      getFilteredData(CLIMATE_DATA[currentViewState].datos).forEach(d => {
+    viewCommunities().forEach(com => {
+      getFilteredData(CLIMATE_DATA[com].datos).forEach(d => {
         const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
         if (conteos.hasOwnProperty(n)) conteos[n]++;
       });
-    }
+    });
 
     const totalDias = Object.values(conteos).reduce((a, b) => a + b, 0);
 
@@ -812,7 +1064,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="river-legend-dot" style="background:${dotColor};"></div>
         <div class="river-legend-info">
           <div class="river-legend-label">${nv.label}</div>
-          <div class="river-legend-sub">${nv.sub}</div>
         </div>
         <div style="text-align:right;">
           <div class="river-legend-count" style="color:${dotColor};">${count}</div>
@@ -855,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ─── 7. Cambio de tema ───────────────────────────────────────────────────────
+  // ─── 8. Cambio de tema ───────────────────────────────────────────────────────
   function applyTheme() {
     const body    = document.body;
     const sunIcon  = themeToggleBtn.querySelector('.sun-icon');
@@ -891,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyTheme();
   });
 
-  // ─── 8. Renderizado maestro ──────────────────────────────────────────────────
+  // ─── 9. Renderizado maestro ──────────────────────────────────────────────────
   function renderDashboard() {
     renderKPIs();
     updateMap();
@@ -900,11 +1151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTable();
   }
 
-  // ─── 9. Listeners de fechas ──────────────────────────────────────────────────
+  // ─── 10. Listeners de fechas ─────────────────────────────────────────────────
   startDateInput.addEventListener('change', () => {
     if (startDateInput.value > endDateInput.value) {
       endDateInput.value = startDateInput.value;
     }
+    syncMonthSelect();
     renderDashboard();
   });
 
@@ -912,11 +1164,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (endDateInput.value < startDateInput.value) {
       startDateInput.value = endDateInput.value;
     }
+    syncMonthSelect();
     renderDashboard();
   });
 
   // ─── Arranque ────────────────────────────────────────────────────────────────
   initDateInputs();
+  initMonthSelect();
   initializeSidebar();
   initializeMap();
   renderDashboard();

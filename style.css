@@ -10,6 +10,8 @@
   --primary-glow: rgba(16, 185, 129, 0.15);
   --secondary: #0284c7; /* Azul Caquetá */
   --secondary-glow: rgba(2, 132, 199, 0.15);
+  --tertiary: #8b5cf6; /* Violeta Putumayo */
+  --tertiary-glow: rgba(139, 92, 246, 0.15);
   
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
@@ -33,6 +35,8 @@ body.light-theme {
   --primary-glow: rgba(16, 185, 129, 0.1);
   --secondary: #0284c7;
   --secondary-glow: rgba(2, 132, 199, 0.1);
+  --tertiary: #7c3aed;
+  --tertiary-glow: rgba(124, 58, 237, 0.1);
   
   --text-main: #0f172a;
   --text-muted: #475569;
@@ -89,10 +93,10 @@ body.light-theme header {
 
 /* Banner introductorio */
 .intro-banner {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(2, 132, 199, 0.06));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(2, 132, 199, 0.06), rgba(139, 92, 246, 0.06));
   border-bottom: 1px solid var(--card-border);
   border-left: 4px solid;
-  border-image: linear-gradient(to bottom, var(--primary), var(--secondary)) 1;
+  border-image: linear-gradient(to bottom, var(--primary), var(--secondary), var(--tertiary)) 1;
   padding: 1.25rem 2rem;
   display: flex;
   align-items: flex-start;
@@ -177,7 +181,7 @@ body.light-theme .intro-close-btn:hover {
 .logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--secondary), var(--tertiary));
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -348,6 +352,40 @@ body.light-theme .date-input-group input[type="date"] {
   box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
+.date-input-group select {
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  color: var(--text-main);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  outline: none;
+  transition: var(--transition);
+  cursor: pointer;
+  width: 100%;
+}
+
+.date-input-group select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+body.light-theme .date-input-group select {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+body.light-theme .date-input-group select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.date-input-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
 .filter-section h3 {
   font-size: 0.9rem;
   letter-spacing: 0.02em;
@@ -400,6 +438,11 @@ body.light-theme .date-input-group input[type="date"] {
   background: var(--secondary-glow);
 }
 
+.community-btn[data-dept="Putumayo"].active {
+  border-color: var(--tertiary);
+  background: var(--tertiary-glow);
+}
+
 .community-badge {
   font-size: 0.7rem;
   padding: 0.2rem 0.5rem;
@@ -416,6 +459,11 @@ body.light-theme .date-input-group input[type="date"] {
 .community-btn[data-dept="Caquetá"].active .community-badge {
   background: rgba(2, 132, 199, 0.2);
   color: var(--secondary);
+}
+
+.community-btn[data-dept="Putumayo"].active .community-badge {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--tertiary);
 }
 
 /* Área de contenido */
@@ -471,6 +519,10 @@ body.light-theme .date-input-group input[type="date"] {
   background: var(--secondary);
 }
 
+.kpi-card[data-style="putumayo"]:hover::before {
+  background: var(--tertiary);
+}
+
 .kpi-header {
   display: flex;
   justify-content: space-between;
@@ -494,6 +546,10 @@ body.light-theme .date-input-group input[type="date"] {
 
 .kpi-card[data-style="caqueta"] .kpi-icon {
   color: var(--secondary);
+}
+
+.kpi-card[data-style="putumayo"] .kpi-icon {
+  color: var(--tertiary);
 }
 
 .kpi-value {
@@ -694,6 +750,30 @@ body.light-theme tr:hover td {
   background: rgba(2, 132, 199, 0.15);
   color: var(--secondary);
   border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.dept-badge[data-dept="Putumayo"] {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--tertiary);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ─── Advertencias de calidad de datos en gráficos ─────────────────────── */
+.chart-warning {
+  margin: 0.5rem 0 0.25rem 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 6px;
+}
+
+body.light-theme .chart-warning {
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.06);
+  border-color: rgba(217, 119, 6, 0.25);
 }
 
 /* ─── Nivel del Río ─────────────────────────────────────────────────────── */
