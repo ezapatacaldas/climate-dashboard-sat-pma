@@ -759,6 +759,56 @@ body.light-theme tr:hover td {
 }
 
 /* ─── Advertencias de calidad de datos en gráficos ─────────────────────── */
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.copy-chart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.copy-chart-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.copy-chart-btn:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.copy-chart-btn.copied {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+body.light-theme .copy-chart-btn {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.chart-period {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
 .chart-warning {
   margin: 0.5rem 0 0.25rem 0;
   padding: 0.5rem 0.75rem;

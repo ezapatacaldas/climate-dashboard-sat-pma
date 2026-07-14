@@ -56,27 +56,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     'Caquetá':  { color: '#0284c7', glow: 'rgba(2,132,199,0.15)',  fill: 'rgba(2,132,199,0.7)',   style: 'caqueta'  },
     'Putumayo': { color: '#8b5cf6', glow: 'rgba(139,92,246,0.15)', fill: 'rgba(139,92,246,0.7)',  style: 'putumayo' }
   };
-  const DEPARTAMENTOS = ['Amazonas', 'Caquetá', 'Putumayo'];
 
   function deptMeta(dept) {
     return DEPT_META[dept] || DEPT_META['Amazonas'];
-  }
-
-  function isDeptView(state) {
-    return state.startsWith('dept:');
-  }
-
-  function deptOfView(state) {
-    return state.slice(5);
-  }
-
-  // Comunidades incluidas en la vista actual
-  function viewCommunities() {
-    if (isDeptView(currentViewState)) {
-      const dept = deptOfView(currentViewState);
-      return Object.keys(CLIMATE_DATA).filter(c => CLIMATE_DATA[c].departamento === dept);
-    }
-    return [currentViewState];
   }
 
   function parseVal(val) {
@@ -159,7 +141,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ─── Elementos del DOM ───────────────────────────────────────────────────────
-  const listDepartments = document.getElementById('list-departments');
   const listAmazonas    = document.getElementById('list-amazonas');
   const listCaqueta     = document.getElementById('list-caqueta');
   const listPutumayo    = document.getElementById('list-putumayo');
@@ -169,6 +150,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rainTargetName  = document.getElementById('rain-target-name');
   const tempWarning     = document.getElementById('temp-warning');
   const rainWarning     = document.getElementById('rain-warning');
+  const tempPeriod      = document.getElementById('temp-period');
+  const rainPeriod      = document.getElementById('rain-period');
+  const riverPeriod     = document.getElementById('river-period');
   const dataTable       = document.getElementById('data-table');
   const tableTitle      = document.getElementById('table-title');
   const themeToggleBtn  = document.getElementById('theme-toggle');
@@ -212,8 +196,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let tempChartInstance  = null;
   let rainChartInstance  = null;
   let riverChartInstance = null;
-  let currentViewState   = 'dept:Amazonas'; // 'dept:<Departamento>' o nombre de comunidad
+  let currentViewState   = ''; // Nombre de la comunidad activa (se define en el arranque)
   let isLightTheme       = false;
+  let lastRiverStats     = null; // Conteos del último gráfico de río (para copiar imagen)
 
   // ─── Utilidades de fecha ─────────────────────────────────────────────────────
   function getAllDates() {
@@ -309,6 +294,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Etiqueta del mes seleccionado (ej. "Marzo de 2026") o null si no aplica
+  function getSelectedMonthLabel() {
+    const val = monthSelect.value;
+    if (val === 'all' || val === 'custom') return null;
+    const [year, month] = val.split('-');
+    const nombreMes = MESES_ES[parseInt(month, 10) - 1];
+    return `${nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)} de ${year}`;
+  }
+
+  // Muestra u oculta el mes seleccionado bajo los títulos de los tres gráficos
+  function updatePeriodLabels() {
+    const label = getSelectedMonthLabel();
+    [tempPeriod, rainPeriod, riverPeriod].forEach(el => {
+      if (!el) return;
+      if (label) {
+        el.textContent = label;
+        el.style.display = 'block';
+      } else {
+        el.textContent = '';
+        el.style.display = 'none';
+      }
+    });
+  }
+
   // ─── Control de calidad de datos ─────────────────────────────────────────────
   const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -373,26 +382,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     return Array.from(gapMonths);
   }
 
-  // Construye el texto de advertencia de un gráfico para la vista actual
+  // Construye el texto de advertencia de un gráfico para la comunidad activa
   function buildWarnings(fields, checkTemp) {
     const messages = [];
+    const datos = getFilteredData(CLIMATE_DATA[currentViewState].datos);
 
-    viewCommunities().forEach(com => {
-      const datos = getFilteredData(CLIMATE_DATA[com].datos);
-      const prefix = isDeptView(currentViewState) ? `${com}: ` : '';
-
-      if (checkTemp) {
-        const anomalies = detectTempAnomalies(datos);
-        if (anomalies > 0) {
-          messages.push(`${prefix}${anomalies} registro${anomalies > 1 ? 's' : ''} de temperatura con valores atípicos (mínima mayor que la máxima o fuera del rango ${TEMP_MIN_PLAUSIBLE}–${TEMP_MAX_PLAUSIBLE} °C).`);
-        }
+    if (checkTemp) {
+      const anomalies = detectTempAnomalies(datos);
+      if (anomalies > 0) {
+        messages.push(`${anomalies} registro${anomalies > 1 ? 's' : ''} de temperatura con valores atípicos (mínima mayor que la máxima o fuera del rango ${TEMP_MIN_PLAUSIBLE}–${TEMP_MAX_PLAUSIBLE} °C).`);
       }
+    }
 
-      const gaps = detectGapMonths(datos, fields);
-      if (gaps.length > 0) {
-        messages.push(`${prefix}vacíos de más de tres días consecutivos sin datos en ${gaps.join(', ')}.`);
-      }
-    });
+    const gaps = detectGapMonths(datos, fields);
+    if (gaps.length > 0) {
+      messages.push(`Vacíos de más de tres días consecutivos sin datos en ${gaps.join(', ')}.`);
+    }
 
     return messages;
   }
@@ -424,38 +429,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function initializeSidebar() {
-    listDepartments.innerHTML = '';
-    listAmazonas.innerHTML    = '';
-    listCaqueta.innerHTML     = '';
-    listPutumayo.innerHTML    = '';
+    listAmazonas.innerHTML = '';
+    listCaqueta.innerHTML  = '';
+    listPutumayo.innerHTML = '';
 
-    // Botones de vista por departamento
-    DEPARTAMENTOS.forEach(dept => {
-      const comunidades = Object.keys(CLIMATE_DATA).filter(c => CLIMATE_DATA[c].departamento === dept);
-      if (comunidades.length === 0) return;
-
-      const btn = document.createElement('button');
-      btn.className = 'community-btn';
-      btn.setAttribute('data-dept', dept);
-      btn.setAttribute('data-dept-view', dept);
-      btn.innerHTML = `
-        <span>${dept}</span>
-        <span class="community-badge">${comunidades.length} sitio${comunidades.length > 1 ? 's' : ''}</span>
-      `;
-
-      btn.addEventListener('click', () => {
-        setActiveButton(btn);
-        currentViewState = `dept:${dept}`;
-        renderDashboard();
-        closeSidebar();
-      });
-
-      listDepartments.appendChild(btn);
-
-      if (`dept:${dept}` === currentViewState) btn.classList.add('active');
-    });
-
-    // Botones de comunidades individuales
     Object.keys(CLIMATE_DATA).forEach(comunidad => {
       const info = CLIMATE_DATA[comunidad];
       const btn  = document.createElement('button');
@@ -473,6 +450,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderDashboard();
         closeSidebar(); // Cerrar menú en móvil al seleccionar
       });
+
+      if (comunidad === currentViewState) btn.classList.add('active');
 
       if (info.departamento === 'Amazonas') {
         listAmazonas.appendChild(btn);
@@ -564,124 +543,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderKPIs() {
     kpisContainer.innerHTML = '';
 
-    if (isDeptView(currentViewState)) {
-      const dept        = deptOfView(currentViewState);
-      const styleType   = deptMeta(dept).style;
-      const comunidades = viewCommunities();
+    const info      = CLIMATE_DATA[currentViewState];
+    const styleType = deptMeta(info.departamento).style;
+    const datos     = getFilteredData(info.datos);
 
-      // Acumular datos por comunidad (respetando filtro de fecha)
-      let masLluviosaTotal    = 0;
-      let masLluviosaComunidad = '—';
-      let countRegistros      = 0;
-      let allTmax             = [];
-      let allTmin             = [];
+    const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
+    const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
 
-      comunidades.forEach(comunidad => {
-        const datos = getFilteredData(CLIMATE_DATA[comunidad].datos);
+    const avgTmax  = tmaxList.length > 0 ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
+    const avgTmin  = tminList.length > 0 ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
 
-        const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
-        const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
-        allTmax = allTmax.concat(tmaxList);
-        allTmin = allTmin.concat(tminList);
+    const totalPrec  = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
+    const diasLluvia = datos.filter(d => (d.precipitacion || 0) > 0).length;
 
-        const totalPrec = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
-        if (totalPrec > masLluviosaTotal) {
-          masLluviosaTotal     = totalPrec;
-          masLluviosaComunidad = comunidad;
-        }
-        countRegistros += datos.length;
-      });
+    // Card 1: Temp máx. promedio
+    createKPICard(
+      'Temperatura máx. promedio',
+      `${avgTmax.toFixed(1)} °C`,
+      'Promedio de las temperaturas máximas diarias',
+      styleType,
+      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
+    );
 
-      const avgTmax = allTmax.length > 0 ? allTmax.reduce((a, b) => a + b, 0) / allTmax.length : 0;
-      const avgTmin = allTmin.length > 0 ? allTmin.reduce((a, b) => a + b, 0) / allTmin.length : 0;
+    // Card 2: Temp mín. promedio
+    createKPICard(
+      'Temperatura mín. promedio',
+      `${avgTmin.toFixed(1)} °C`,
+      'Promedio de las temperaturas mínimas diarias',
+      styleType,
+      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
+    );
 
-      // Card 1: Comunidad más lluviosa
-      createKPICard(
-        'Comunidad más lluviosa',
-        `${masLluviosaComunidad}`,
-        `${masLluviosaTotal.toFixed(1)} mm de lluvia acumulada`,
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5m0 13.5v1.5M5.25 5.25l1.05 1.05m10.5 10.5 1.05 1.05M3 12h1.5m13.5 0H21M5.25 18.75l1.05-1.05m10.5-10.5 1.05-1.05M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
-      );
+    // Card 3: Precipitación acumulada
+    createKPICard(
+      'Precipitación acumulada',
+      `${totalPrec.toFixed(1)} mm`,
+      'Volumen total de agua captada en el periodo',
+      styleType,
+      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>`
+    );
 
-      // Card 2: Temperatura máxima promedio
-      createKPICard(
-        'Temp. máx. promedio',
-        `${avgTmax.toFixed(1)} °C`,
-        `Promedio de las máximas diarias de las comunidades de ${dept}`,
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>`
-      );
-
-      // Card 3: Temperatura mínima promedio
-      createKPICard(
-        'Temp. mín. promedio',
-        `${avgTmin.toFixed(1)} °C`,
-        `Promedio de las mínimas diarias de las comunidades de ${dept}`,
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
-      );
-
-      // Card 4: Días monitoreados
-      createKPICard(
-        'Días monitoreados (periodo)',
-        `${countRegistros} días`,
-        'Suma total de registros climáticos en el rango seleccionado',
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg>`
-      );
-
-    } else {
-      // ─── Vista individual ────────────────────────────────────────────────────
-      const info      = CLIMATE_DATA[currentViewState];
-      const styleType = deptMeta(info.departamento).style;
-      const datos     = getFilteredData(info.datos);
-
-      const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
-      const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
-
-      const avgTmax  = tmaxList.length > 0 ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
-      const avgTmin  = tminList.length > 0 ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
-
-      const totalPrec  = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
-      const diasLluvia = datos.filter(d => (d.precipitacion || 0) > 0).length;
-
-      // Card 1: Temp máx. promedio
-      createKPICard(
-        'Temperatura máx. promedio',
-        `${avgTmax.toFixed(1)} °C`,
-        'Promedio de las temperaturas máximas diarias',
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
-      );
-
-      // Card 2: Temp mín. promedio
-      createKPICard(
-        'Temperatura mín. promedio',
-        `${avgTmin.toFixed(1)} °C`,
-        'Promedio de las temperaturas mínimas diarias',
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
-      );
-
-      // Card 3: Precipitación acumulada
-      createKPICard(
-        'Precipitación acumulada',
-        `${totalPrec.toFixed(1)} mm`,
-        'Volumen total de agua captada en el periodo',
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>`
-      );
-
-      // Card 4: Días con precipitación
-      createKPICard(
-        'Días con precipitación',
-        `${diasLluvia} días`,
-        `${datos.length > 0 ? ((diasLluvia / datos.length) * 100).toFixed(0) : 0}% del periodo con eventos de lluvia`,
-        styleType,
-        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
-      );
-    }
+    // Card 4: Días con precipitación
+    createKPICard(
+      'Días con precipitación',
+      `${diasLluvia} días`,
+      `${datos.length > 0 ? ((diasLluvia / datos.length) * 100).toFixed(0) : 0}% del periodo con eventos de lluvia`,
+      styleType,
+      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
+    );
   }
 
   function createKPICard(title, value, desc, styleType, iconSvg) {
@@ -704,28 +613,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mapInstance) return;
     refreshMarkerPopups();
 
-    if (isDeptView(currentViewState)) {
-      const dept = deptOfView(currentViewState);
-      const meta = deptMeta(dept);
-      mapTargetName.textContent = dept;
-      mapTargetName.style.backgroundColor = meta.glow;
-      mapTargetName.style.color = meta.color;
-      const latLons = viewCommunities().map(c => [CLIMATE_DATA[c].lat, CLIMATE_DATA[c].lon]);
-      if (latLons.length === 1) {
-        mapInstance.setView(latLons[0], 11, { animate: true, duration: 1 });
-      } else if (latLons.length > 1) {
-        mapInstance.fitBounds(latLons, { padding: [50, 50] });
-      }
-    } else {
-      const info = CLIMATE_DATA[currentViewState];
-      const meta = deptMeta(info.departamento);
-      mapTargetName.textContent = currentViewState;
-      mapTargetName.style.backgroundColor = meta.glow;
-      mapTargetName.style.color = meta.color;
-      mapInstance.setView([info.lat, info.lon], 11, { animate: true, duration: 1 });
-      const targetMarker = markersGroup.find(m => m.name === currentViewState);
-      if (targetMarker) targetMarker.marker.openPopup();
-    }
+    const info = CLIMATE_DATA[currentViewState];
+    const meta = deptMeta(info.departamento);
+    mapTargetName.textContent = currentViewState;
+    mapTargetName.style.backgroundColor = meta.glow;
+    mapTargetName.style.color = meta.color;
+    mapInstance.setView([info.lat, info.lon], 11, { animate: true, duration: 1 });
+    const targetMarker = markersGroup.find(m => m.name === currentViewState);
+    if (targetMarker) targetMarker.marker.openPopup();
   }
 
   // ─── 5. Gráficos (Chart.js) ──────────────────────────────────────────────────
@@ -737,273 +632,142 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rainCtx = document.getElementById('rainChart').getContext('2d');
     const { tickColor, gridColor, legendColor } = getChartColors();
 
-    const deptView = isDeptView(currentViewState);
-    const viewLabel = deptView ? `${deptOfView(currentViewState)} · comparación` : currentViewState;
-    tempTargetName.textContent = viewLabel;
-    rainTargetName.textContent = deptView ? `${deptOfView(currentViewState)} · acumulado` : currentViewState;
+    tempTargetName.textContent = currentViewState;
+    rainTargetName.textContent = currentViewState;
 
     // Mensajes de control de calidad bajo los títulos
     renderWarning(tempWarning, buildWarnings(['tmin', 'tmax'], true));
     renderWarning(rainWarning, buildWarnings(['precipitacion'], false));
 
-    if (deptView) {
-      const comunidades = viewCommunities();
+    const info      = CLIMATE_DATA[currentViewState];
+    const datos     = getFilteredData(info.datos);
+    const meta      = deptMeta(info.departamento);
+    const deptColor = meta.color;
+    const deptGlow  = meta.glow;
 
-      const tempsPromedio = comunidades.map(com => {
-        const datos    = getFilteredData(CLIMATE_DATA[com].datos);
-        const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
-        const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
-        const avgMax   = tmaxList.length > 0 ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
-        const avgMin   = tminList.length > 0 ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
-        return { com, avgMax, avgMin, dept: CLIMATE_DATA[com].departamento };
-      });
+    const fechas   = datos.map(d => d.fecha);
+    const tmaxData = datos.map(d => d.tmax);
+    const tminData = datos.map(d => d.tmin);
+    const precData = datos.map(d => d.precipitacion);
 
-      tempChartInstance = new Chart(tempCtx, {
-        type: 'bar',
-        data: {
-          labels: tempsPromedio.map(t => t.com),
-          datasets: [
-            {
-              label: 'Temp. máx. promedio (°C)',
-              data: tempsPromedio.map(t => parseFloat(t.avgMax.toFixed(1))),
-              backgroundColor: tempsPromedio.map(t => deptMeta(t.dept).fill),
-              borderColor: tempsPromedio.map(t => deptMeta(t.dept).color),
-              borderWidth: 1,
-              borderRadius: 6
-            },
-            {
-              label: 'Temp. mín. promedio (°C)',
-              data: tempsPromedio.map(t => parseFloat(t.avgMin.toFixed(1))),
-              backgroundColor: 'rgba(100,116,139,0.4)',
-              borderColor: '#64748b',
-              borderWidth: 1,
-              borderRadius: 6
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: legendColor, font: { family: 'Outfit' } } }
+    tempChartInstance = new Chart(tempCtx, {
+      type: 'line',
+      data: {
+        labels: fechas,
+        datasets: [
+          {
+            label: 'Temperatura máxima (°C)',
+            data: tmaxData,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.05)',
+            borderWidth: 2.5,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#ef4444',
+            spanGaps: true
           },
-          scales: {
-            x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } } },
-            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Grados (°C)', color: tickColor } }
+          {
+            label: 'Temperatura mínima (°C)',
+            data: tminData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.05)',
+            borderWidth: 2.5,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#3b82f6',
+            spanGaps: true
           }
-        }
-      });
-
-      const precipitaciones = comunidades.map(com => {
-        const datos = getFilteredData(CLIMATE_DATA[com].datos);
-        const total = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
-        return { com, total, dept: CLIMATE_DATA[com].departamento };
-      });
-
-      rainChartInstance = new Chart(rainCtx, {
-        type: 'bar',
-        data: {
-          labels: precipitaciones.map(p => p.com),
-          datasets: [{
-            label: 'Precipitación acumulada (mm)',
-            data: precipitaciones.map(p => parseFloat(p.total.toFixed(1))),
-            backgroundColor: precipitaciones.map(p => deptMeta(p.dept).fill),
-            borderColor: precipitaciones.map(p => deptMeta(p.dept).color),
-            borderWidth: 1,
-            borderRadius: 8
-          }]
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: legendColor, font: { family: 'Outfit' } } }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } } },
-            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Milímetros (mm)', color: tickColor } }
-          }
+        interaction: { intersect: false, mode: 'index' },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } } }
         }
-      });
+      }
+    });
 
-    } else {
-      const info      = CLIMATE_DATA[currentViewState];
-      const datos     = getFilteredData(info.datos);
-      const meta      = deptMeta(info.departamento);
-      const deptColor = meta.color;
-      const deptGlow  = meta.glow;
-
-      const fechas   = datos.map(d => d.fecha);
-      const tmaxData = datos.map(d => d.tmax);
-      const tminData = datos.map(d => d.tmin);
-      const precData = datos.map(d => d.precipitacion);
-
-      tempChartInstance = new Chart(tempCtx, {
-        type: 'line',
-        data: {
-          labels: fechas,
-          datasets: [
-            {
-              label: 'Temperatura máxima (°C)',
-              data: tmaxData,
-              borderColor: '#ef4444',
-              backgroundColor: 'rgba(239,68,68,0.05)',
-              borderWidth: 2.5,
-              tension: 0.35,
-              pointRadius: 3,
-              pointBackgroundColor: '#ef4444',
-              spanGaps: true
-            },
-            {
-              label: 'Temperatura mínima (°C)',
-              data: tminData,
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59,130,246,0.05)',
-              borderWidth: 2.5,
-              tension: 0.35,
-              pointRadius: 3,
-              pointBackgroundColor: '#3b82f6',
-              spanGaps: true
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: legendColor, font: { family: 'Outfit' } } }
-          },
-          interaction: { intersect: false, mode: 'index' },
-          scales: {
-            x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
-            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } } }
-          }
+    rainChartInstance = new Chart(rainCtx, {
+      type: 'bar',
+      data: {
+        labels: fechas,
+        datasets: [{
+          label: 'Precipitación diaria (mm)',
+          data: precData,
+          backgroundColor: deptGlow,
+          borderColor: deptColor,
+          borderWidth: 1.5,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Lluvia (mm)', color: tickColor } }
         }
-      });
-
-      rainChartInstance = new Chart(rainCtx, {
-        type: 'bar',
-        data: {
-          labels: fechas,
-          datasets: [{
-            label: 'Precipitación diaria (mm)',
-            data: precData,
-            backgroundColor: deptGlow,
-            borderColor: deptColor,
-            borderWidth: 1.5,
-            borderRadius: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
-            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Lluvia (mm)', color: tickColor } }
-          }
-        }
-      });
-    }
+      }
+    });
   }
 
   // ─── 6. Tabla de datos ───────────────────────────────────────────────────────
   function renderTable() {
     dataTable.innerHTML = '';
 
-    if (isDeptView(currentViewState)) {
-      const dept = deptOfView(currentViewState);
-      tableTitle.textContent = `Resumen comparativo de comunidades · ${dept}`;
+    tableTitle.textContent = `Registros históricos diarios - ${currentViewState}`;
 
-      const headerRow = document.createElement('tr');
-      headerRow.innerHTML = `
-        <th>Comunidad</th>
-        <th>Departamento</th>
-        <th>Coordenadas (DD)</th>
-        <th>Temp. máx. promedio (°C)</th>
-        <th>Temp. mín. promedio (°C)</th>
-        <th>Lluvia acumulada (mm)</th>
-        <th>Días con lluvia</th>
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `
+      <th>Fecha</th>
+      <th>Precipitación (mm)</th>
+      <th>Temperatura mínima (°C)</th>
+      <th>Temperatura máxima (°C)</th>
+      <th>Condición climática</th>
+    `;
+    dataTable.appendChild(headerRow);
+
+    const datos = getFilteredData(CLIMATE_DATA[currentViewState].datos);
+    const datosOrdenados = [...datos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+    datosOrdenados.forEach(r => {
+      const row = document.createElement('tr');
+
+      const precVal = r.precipitacion !== null && r.precipitacion !== undefined ? `${r.precipitacion.toFixed(1)} mm` : 'N/D';
+      const tminVal = r.tmin !== null && r.tmin !== undefined ? `${r.tmin.toFixed(1)} °C` : 'N/D';
+      const tmaxVal = r.tmax !== null && r.tmax !== undefined ? `${r.tmax.toFixed(1)} °C` : 'N/D';
+
+      let condicionText  = 'Seco';
+      let condicionStyle = 'color:var(--text-muted);';
+      const prec = r.precipitacion || 0;
+
+      if (prec > 50) {
+        condicionText  = 'Precipitación extrema';
+        condicionStyle = 'color:#ef4444;font-weight:600;';
+      } else if (prec > 10) {
+        condicionText  = 'Lluvia fuerte';
+        condicionStyle = 'color:#3b82f6;font-weight:500;';
+      } else if (prec > 0) {
+        condicionText  = 'Llovizna';
+        condicionStyle = 'color:#60a5fa;';
+      }
+
+      row.innerHTML = `
+        <td style="font-family:monospace;color:var(--text-main);">${r.fecha}</td>
+        <td style="font-weight:500;color:var(--text-main);">${precVal}</td>
+        <td style="color:#60a5fa;">${tminVal}</td>
+        <td style="color:#f87171;">${tmaxVal}</td>
+        <td><span style="${condicionStyle}">${condicionText}</span></td>
       `;
-      dataTable.appendChild(headerRow);
-
-      viewCommunities().forEach(comunidad => {
-        const info  = CLIMATE_DATA[comunidad];
-        const datos = getFilteredData(info.datos);
-
-        const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
-        const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
-
-        const avgTmax    = tmaxList.length > 0 ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
-        const avgTmin    = tminList.length > 0 ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
-        const totalPrec  = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
-        const diasLluvia = datos.filter(d => (d.precipitacion || 0) > 0).length;
-
-        const row = document.createElement('tr');
-        row.style.cursor = 'pointer';
-        row.addEventListener('click', () => {
-          const btn = document.querySelector(`[data-community="${comunidad}"]`);
-          if (btn) btn.click();
-        });
-
-        row.innerHTML = `
-          <td style="font-weight:600;color:var(--text-main);">${comunidad}</td>
-          <td><span class="dept-badge" data-dept="${info.departamento}">${info.departamento}</span></td>
-          <td style="font-family:monospace;font-size:0.8rem;color:var(--text-muted);">${info.lat.toFixed(4)}, ${info.lon.toFixed(4)}</td>
-          <td style="color:#ef4444;font-weight:500;">${avgTmax.toFixed(1)} °C</td>
-          <td style="color:#3b82f6;font-weight:500;">${avgTmin.toFixed(1)} °C</td>
-          <td style="font-weight:600;color:var(--text-main);">${totalPrec.toFixed(1)} mm</td>
-          <td>${diasLluvia} de ${datos.length} días</td>
-        `;
-        dataTable.appendChild(row);
-      });
-
-    } else {
-      tableTitle.textContent = `Registros históricos diarios - ${currentViewState}`;
-
-      const headerRow = document.createElement('tr');
-      headerRow.innerHTML = `
-        <th>Fecha</th>
-        <th>Precipitación (mm)</th>
-        <th>Temperatura mínima (°C)</th>
-        <th>Temperatura máxima (°C)</th>
-        <th>Condición climática</th>
-      `;
-      dataTable.appendChild(headerRow);
-
-      const datos = getFilteredData(CLIMATE_DATA[currentViewState].datos);
-      const datosOrdenados = [...datos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-
-      datosOrdenados.forEach(r => {
-        const row = document.createElement('tr');
-
-        const precVal = r.precipitacion !== null && r.precipitacion !== undefined ? `${r.precipitacion.toFixed(1)} mm` : 'N/D';
-        const tminVal = r.tmin !== null && r.tmin !== undefined ? `${r.tmin.toFixed(1)} °C` : 'N/D';
-        const tmaxVal = r.tmax !== null && r.tmax !== undefined ? `${r.tmax.toFixed(1)} °C` : 'N/D';
-
-        let condicionText  = 'Seco';
-        let condicionStyle = 'color:var(--text-muted);';
-        const prec = r.precipitacion || 0;
-
-        if (prec > 50) {
-          condicionText  = 'Precipitación extrema';
-          condicionStyle = 'color:#ef4444;font-weight:600;';
-        } else if (prec > 10) {
-          condicionText  = 'Lluvia fuerte';
-          condicionStyle = 'color:#3b82f6;font-weight:500;';
-        } else if (prec > 0) {
-          condicionText  = 'Llovizna';
-          condicionStyle = 'color:#60a5fa;';
-        }
-
-        row.innerHTML = `
-          <td style="font-family:monospace;color:var(--text-main);">${r.fecha}</td>
-          <td style="font-weight:500;color:var(--text-main);">${precVal}</td>
-          <td style="color:#60a5fa;">${tminVal}</td>
-          <td style="color:#f87171;">${tmaxVal}</td>
-          <td><span style="${condicionStyle}">${condicionText}</span></td>
-        `;
-        dataTable.appendChild(row);
-      });
-    }
+      dataTable.appendChild(row);
+    });
   }
 
   // ─── 7. Gráfico de Nivel del Río ─────────────────────────────────────────────
@@ -1016,9 +780,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const riverTarget   = document.getElementById('river-target-name');
     const riverCtx      = document.getElementById('riverChart').getContext('2d');
 
-    riverTarget.textContent = isDeptView(currentViewState)
-      ? deptOfView(currentViewState)
-      : currentViewState;
+    riverTarget.textContent = currentViewState;
 
     // Colores y etiquetas de cada nivel
     const niveles = [
@@ -1027,17 +789,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       { key: 'Bajo',  label: 'Bajo',  color: '#d97706', light: '#fbbf24' },
     ];
 
-    // Acumular conteos según la vista
+    // Acumular conteos de la comunidad activa
     const conteos = { Alto: 0, Medio: 0, Bajo: 0 };
 
-    viewCommunities().forEach(com => {
-      getFilteredData(CLIMATE_DATA[com].datos).forEach(d => {
-        const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
-        if (conteos.hasOwnProperty(n)) conteos[n]++;
-      });
+    getFilteredData(CLIMATE_DATA[currentViewState].datos).forEach(d => {
+      const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
+      if (conteos.hasOwnProperty(n)) conteos[n]++;
     });
 
     const totalDias = Object.values(conteos).reduce((a, b) => a + b, 0);
+    lastRiverStats = { conteos: { ...conteos }, totalDias, niveles };
 
     // Si no hay ningún dato de nivel, mostrar mensaje
     if (totalDias === 0) {
@@ -1049,7 +810,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     riverLayout.style.display = 'flex';
     riverNoData.style.display = 'none';
 
-    const { tickColor, legendColor } = getChartColors();
     const useDark = !isLightTheme;
 
     // Construir leyenda
@@ -1106,7 +866,125 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ─── 8. Cambio de tema ───────────────────────────────────────────────────────
+  // ─── 8. Copiar gráficas como imágenes ────────────────────────────────────────
+  const CHART_TITLES = {
+    tempChart:  'Temperatura',
+    rainChart:  'Precipitación',
+    riverChart: 'Nivel del río'
+  };
+
+  function slugify(text) {
+    return text.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  // Compone la gráfica en un lienzo con fondo, título y (para el río) leyenda
+  function composeChartCanvas(canvasId) {
+    const src = document.getElementById(canvasId);
+    if (!src || src.width === 0) return null;
+
+    const dpr    = window.devicePixelRatio || 1;
+    const pad    = 20 * dpr;
+    const titleH = 52 * dpr;
+    const isRiver = canvasId === 'riverChart';
+    const legendH = (isRiver && lastRiverStats && lastRiverStats.totalDias > 0)
+      ? (lastRiverStats.niveles.length * 26 + 10) * dpr
+      : 0;
+
+    const out = document.createElement('canvas');
+    out.width  = src.width + pad * 2;
+    out.height = src.height + titleH + legendH + pad * 2;
+    const ctx = out.getContext('2d');
+
+    // Fondo sólido (según tema)
+    ctx.fillStyle = isLightTheme ? '#ffffff' : '#0f172a';
+    ctx.fillRect(0, 0, out.width, out.height);
+
+    // Título y subtítulo
+    const textMain  = isLightTheme ? '#0f172a' : '#f8fafc';
+    const textMuted = isLightTheme ? '#475569' : '#94a3b8';
+    const monthLabel = getSelectedMonthLabel();
+    const subtitle = monthLabel
+      ? `${currentViewState} · ${monthLabel}`
+      : `${currentViewState} · ${startDateInput.value} a ${endDateInput.value}`;
+
+    ctx.fillStyle = textMain;
+    ctx.font = `600 ${15 * dpr}px Outfit, sans-serif`;
+    ctx.fillText(CHART_TITLES[canvasId] || 'Gráfica', pad, pad + 14 * dpr);
+
+    ctx.fillStyle = textMuted;
+    ctx.font = `400 ${12 * dpr}px Outfit, sans-serif`;
+    ctx.fillText(subtitle, pad, pad + 32 * dpr);
+
+    // Gráfica
+    ctx.drawImage(src, pad, titleH + pad);
+
+    // Leyenda del nivel del río (el donut no la incluye en el canvas)
+    if (legendH > 0) {
+      const useDark = !isLightTheme;
+      let y = titleH + pad + src.height + 20 * dpr;
+      lastRiverStats.niveles.forEach(nv => {
+        const count = lastRiverStats.conteos[nv.key];
+        const pct   = lastRiverStats.totalDias > 0 ? ((count / lastRiverStats.totalDias) * 100).toFixed(0) : 0;
+        const dotColor = useDark ? nv.color : nv.light;
+
+        ctx.fillStyle = dotColor;
+        ctx.beginPath();
+        ctx.arc(pad + 6 * dpr, y - 4 * dpr, 5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = textMain;
+        ctx.font = `500 ${12 * dpr}px Outfit, sans-serif`;
+        ctx.fillText(`${nv.label}: ${count} días (${pct}%)`, pad + 18 * dpr, y);
+
+        y += 26 * dpr;
+      });
+    }
+
+    return out;
+  }
+
+  function showCopyFeedback(btn, ok) {
+    const original = btn.innerHTML;
+    btn.innerHTML = ok
+      ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>`;
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = original;
+      btn.classList.remove('copied');
+    }, 1600);
+  }
+
+  async function copyChartImage(canvasId, btn) {
+    const composed = composeChartCanvas(canvasId);
+    if (!composed) return;
+
+    composed.toBlob(async (blob) => {
+      if (!blob) return;
+      try {
+        // Copiar al portapapeles (requiere contexto seguro: localhost o HTTPS)
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showCopyFeedback(btn, true);
+      } catch (err) {
+        // Alternativa: descargar como archivo PNG
+        console.warn('No fue posible copiar al portapapeles; se descargará la imagen.', err);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${slugify(CHART_TITLES[canvasId] || 'grafica')}_${slugify(currentViewState)}.png`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        showCopyFeedback(btn, false);
+      }
+    }, 'image/png');
+  }
+
+  document.querySelectorAll('.copy-chart-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyChartImage(btn.dataset.chart, btn));
+  });
+
+  // ─── 9. Cambio de tema ───────────────────────────────────────────────────────
   function applyTheme() {
     const body    = document.body;
     const sunIcon  = themeToggleBtn.querySelector('.sun-icon');
@@ -1142,8 +1020,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyTheme();
   });
 
-  // ─── 9. Renderizado maestro ──────────────────────────────────────────────────
+  // ─── 10. Renderizado maestro ─────────────────────────────────────────────────
   function renderDashboard() {
+    updatePeriodLabels();
     renderKPIs();
     updateMap();
     renderCharts();
@@ -1151,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTable();
   }
 
-  // ─── 10. Listeners de fechas ─────────────────────────────────────────────────
+  // ─── 11. Listeners de fechas ─────────────────────────────────────────────────
   startDateInput.addEventListener('change', () => {
     if (startDateInput.value > endDateInput.value) {
       endDateInput.value = startDateInput.value;
@@ -1169,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ─── Arranque ────────────────────────────────────────────────────────────────
+  currentViewState = Object.keys(CLIMATE_DATA)[0]; // Primera comunidad como vista inicial
   initDateInputs();
   initMonthSelect();
   initializeSidebar();
