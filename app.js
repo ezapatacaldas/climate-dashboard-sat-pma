@@ -47,6 +47,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       lat: 0.328119,
       lon: -76.849465,
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQG0Evez5m07QZVBwM3GTFFM4u2kw8dOWdv_YKsUDsy-q8wEoIhiu6UZbJfimX4eg/pub?output=csv"
+    },
+    {
+      name: "Vereda Alto Lorenzó",
+      dept: "Putumayo",
+      lat: 0.353578,
+      lon: -76.550805,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTi9G8yMvktN-IiDQIYd6Cyb5IohFhuvhcTq41KuKzOGVuNjftPbYs2MZ2C39DNuw/pub?output=csv"
+    },
+    {
+      name: "Resguardo Alto Lorenzó",
+      dept: "Putumayo",
+      lat: 0.356670,
+      lon: -76.545384,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuefH7DXu_AQFU6YQ81BX7Sgpoj4qjG2iK8UZJ1b9tJr5W_SDWC-lOlUMZ9nDUpA/pub?output=csv"
+    },
+    {
+      name: "Resguardo Campo Alegre",
+      dept: "Putumayo",
+      lat: 0.321761,
+      lon: -76.748340,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-U5xBnmKp4CrC7gu8zHWRnJbM58PrrQWP_PP8fVOp1EwN-eb5JwyFp5RE0gggvQ/pub?output=csv"
     }
   ];
 
