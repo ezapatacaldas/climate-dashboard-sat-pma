@@ -42,6 +42,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGva9izFfN1OCRtKID64d6lYbeJY7erz-WuZyBKxub3jh-wJDfgdpCNemt64_N2Q/pub?output=csv"
     },
     {
+      name: "La Alberto",
+      dept: "Caquetá",
+      lat: 1.125861,
+      lon: -76.174806,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS3igIp3-F7rWjyE_h8oBTv7iMwQvaB46sRw3SKo9sCxUGetYBEvHMhPOYlTCWeCg/pub?output=csv"
+    },
+    {
+      name: "Fraguita",
+      dept: "Caquetá",
+      lat: 1.191028,
+      lon: -76.151056,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqbeHmeVzKLIP1d4iXzQt6a7T33lQQ3z12j5NXKRZ7AGOZkNceAPnhIs64AlLU5g/pub?output=csv"
+    },
+    {
       name: "Resguardo Yarinal",
       dept: "Putumayo",
       lat: 0.328119,
