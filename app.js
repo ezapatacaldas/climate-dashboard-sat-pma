@@ -56,6 +56,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRqbeHmeVzKLIP1d4iXzQt6a7T33lQQ3z12j5NXKRZ7AGOZkNceAPnhIs64AlLU5g/pub?output=csv"
     },
     {
+      name: "Alto Zabaleta",
+      dept: "Caquetá",
+      lat: 1.24683,
+      lon: -76.20804,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRocwQliA1msvEj7VKYUBY2DEt_JkG6fh3jYvT0-N4Qv-vgWmDOPc44KUxs-Psprg/pub?output=csv"
+    },
+    {
       name: "Resguardo Yarinal",
       dept: "Putumayo",
       lat: 0.328119,

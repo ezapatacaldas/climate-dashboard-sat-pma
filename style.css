@@ -300,6 +300,33 @@ body.light-theme .theme-toggle-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  /* Scroll vertical propio en escritorio: el panel queda fijo a la altura de
+     la ventana y su contenido se desplaza de forma independiente al resto. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--card-border) transparent;
+}
+
+/* Barra de desplazamiento discreta (navegadores WebKit) */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 body.light-theme .sidebar {
