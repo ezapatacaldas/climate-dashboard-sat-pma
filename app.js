@@ -28,6 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZ_gh8Kc8Ou8nxQt-Kmg9ePOkwBznvfDg2MJFnE9Niyo9mNBrsBvBcy4PlCow2Yg/pub?output=csv"
     },
     {
+      name: "San Francisco",
+      dept: "Amazonas",
+      lat: -3.764278,
+      lon: -70.392083,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSG-oSTalOOLMGpm6-uIM1egul6hcerjdLIR0h1BuiQO6YgJ2Bpj_1duH_Q0lKzKQ/pub?gid=45710766&single=true&output=csv"
+    },
+    {
+      name: "Santa Teresita",
+      dept: "Amazonas",
+      lat: -3.749361,
+      lon: -70.423833,
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjiLs4MF4LJnhrcWBibSLpVKmSMkayCyLRI1rTmV_Pdxo2VgC8bA7Ig4a9OkJwPA/pub?gid=45710766&single=true&output=csv"
+    },
+    {
       name: "Resguardo San Miguel",
       dept: "Caquetá",
       lat: 1.12525,
