@@ -201,6 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const listCaqueta     = document.getElementById('list-caqueta');
   const listPutumayo    = document.getElementById('list-putumayo');
   const kpisContainer   = document.getElementById('kpis-container');
+  const kpisTargetName  = document.getElementById('kpis-target-name');
   const mapTargetName   = document.getElementById('map-target-name');
   const tempTargetName  = document.getElementById('temp-target-name');
   const rainTargetName  = document.getElementById('rain-target-name');
@@ -255,6 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentViewState   = ''; // Nombre de la comunidad activa (se define en el arranque)
   let isLightTheme       = false;
   let lastRiverStats     = null; // Conteos del último gráfico de río (para copiar imagen)
+  let lastKPIStats       = null; // Valores de las tarjetas KPI actuales (para copiar texto/imagen)
 
   // ─── Utilidades de fecha ─────────────────────────────────────────────────────
   function getAllDates() {
@@ -599,6 +601,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderKPIs() {
     kpisContainer.innerHTML = '';
 
+    if (kpisTargetName) kpisTargetName.textContent = currentViewState;
+
     const info      = CLIMATE_DATA[currentViewState];
     const styleType = deptMeta(info.departamento).style;
     const datos     = getFilteredData(info.datos);
@@ -611,6 +615,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const totalPrec  = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
     const diasLluvia = datos.filter(d => (d.precipitacion || 0) > 0).length;
+
+    const pctLluvia = datos.length > 0 ? ((diasLluvia / datos.length) * 100).toFixed(0) : 0;
+
+    // Guardar valores para las funciones de copiado (texto e imagen)
+    lastKPIStats = {
+      comunidad: currentViewState,
+      departamento: info.departamento,
+      avgTmax: tmaxList.length > 0 ? avgTmax.toFixed(1) : 'N/D',
+      avgTmin: tminList.length > 0 ? avgTmin.toFixed(1) : 'N/D',
+      totalPrec: totalPrec.toFixed(1),
+      diasLluvia,
+      pctLluvia
+    };
 
     // Card 1: Temp máx. promedio
     createKPICard(
@@ -630,20 +647,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
     );
 
-    // Card 3: Precipitación acumulada
+    // Card 3: Lluvia acumulada
     createKPICard(
-      'Precipitación acumulada',
+      'Lluvia acumulada',
       `${totalPrec.toFixed(1)} mm`,
-      'Volumen total de agua captada en el periodo',
+      'Cantidad de lluvia total durante el periodo',
       styleType,
       `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>`
     );
 
-    // Card 4: Días con precipitación
+    // Card 4: Días de lluvia
     createKPICard(
-      'Días con precipitación',
+      'Días de lluvia',
       `${diasLluvia} días`,
-      `${datos.length > 0 ? ((diasLluvia / datos.length) * 100).toFixed(0) : 0}% del periodo con eventos de lluvia`,
+      `${pctLluvia}% del periodo con eventos de lluvia`,
       styleType,
       `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
     );
@@ -925,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ─── 8. Copiar gráficas como imágenes ────────────────────────────────────────
   const CHART_TITLES = {
     tempChart:  'Temperatura',
-    rainChart:  'Precipitación',
+    rainChart:  'Lluvia',
     riverChart: 'Nivel del río'
   };
 
@@ -1039,6 +1056,165 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.copy-chart-btn').forEach(btn => {
     btn.addEventListener('click', () => copyChartImage(btn.dataset.chart, btn));
   });
+
+  // ─── 8b. Copiar resumen de KPIs (texto e imagen) ─────────────────────────────
+  // Descripción del periodo activo, reutilizada por ambos formatos
+  function periodDescriptor() {
+    const monthLabel = getSelectedMonthLabel();
+    return monthLabel ? monthLabel : `${startDateInput.value} a ${endDateInput.value}`;
+  }
+
+  function showKpiFeedback(btn, ok) {
+    const label = btn.querySelector('span');
+    const original = label ? label.textContent : '';
+    if (label) label.textContent = ok ? '¡Copiado!' : 'Descargado';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      if (label) label.textContent = original;
+      btn.classList.remove('copied');
+    }, 1600);
+  }
+
+  // — Copiar como TEXTO (formato apto para WhatsApp) —
+  async function copyKPIText(btn) {
+    if (!lastKPIStats) return;
+    const k = lastKPIStats;
+
+    const texto =
+`*${k.comunidad}* — ${periodDescriptor()}
+🌡️ Temp. máx. promedio: ${k.avgTmax}${k.avgTmax !== 'N/D' ? ' °C' : ''}
+🌡️ Temp. mín. promedio: ${k.avgTmin}${k.avgTmin !== 'N/D' ? ' °C' : ''}
+🌧️ Lluvia acumulada: ${k.totalPrec} mm
+📅 Días de lluvia: ${k.diasLluvia} días (${k.pctLluvia}% del periodo)`;
+
+    try {
+      await navigator.clipboard.writeText(texto);
+      showKpiFeedback(btn, true);
+    } catch (err) {
+      console.warn('No se pudo copiar el texto al portapapeles.', err);
+      // Alternativa: seleccionar en un textarea temporal
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showKpiFeedback(btn, true); }
+      catch (e) { showKpiFeedback(btn, false); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  // — Copiar como IMAGEN (tarjetas dibujadas en un canvas) —
+  function copyKPIImage(btn) {
+    if (!lastKPIStats) return;
+    const k = lastKPIStats;
+    const dpr = window.devicePixelRatio || 1;
+
+    // Lienzo: encabezado + grilla 2x2 de tarjetas
+    const W = 620, cardW = 290, cardH = 120, gap = 20, padX = 20;
+    const headerH = 70;
+    const H = headerH + cardH * 2 + gap + 20;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const bg        = isLightTheme ? '#ffffff' : '#0f172a';
+    const cardBg    = isLightTheme ? '#f8fafc' : '#131a26';
+    const cardBorder = isLightTheme ? '#e2e8f0' : '#1e293b';
+    const textMain  = isLightTheme ? '#0f172a' : '#f8fafc';
+    const textMuted = isLightTheme ? '#475569' : '#94a3b8';
+    const accent    = deptMeta(k.departamento).color;
+
+    // Fondo
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Encabezado
+    ctx.fillStyle = textMain;
+    ctx.font = '600 18px Outfit, sans-serif';
+    ctx.fillText(k.comunidad, padX, 30);
+    ctx.fillStyle = textMuted;
+    ctx.font = '400 13px Outfit, sans-serif';
+    ctx.fillText(`${k.departamento} · ${periodDescriptor()}`, padX, 52);
+
+    // Tarjetas
+    const cards = [
+      { title: 'Temperatura máx. promedio', value: `${k.avgTmax}${k.avgTmax !== 'N/D' ? ' °C' : ''}`, desc: 'Promedio de las máximas diarias' },
+      { title: 'Temperatura mín. promedio', value: `${k.avgTmin}${k.avgTmin !== 'N/D' ? ' °C' : ''}`, desc: 'Promedio de las mínimas diarias' },
+      { title: 'Lluvia acumulada', value: `${k.totalPrec} mm`, desc: 'Cantidad de lluvia total del periodo' },
+      { title: 'Días de lluvia', value: `${k.diasLluvia} días`, desc: `${k.pctLluvia}% del periodo con lluvia` }
+    ];
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    cards.forEach((card, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = padX + col * (cardW + gap);
+      const y = headerH + row * (cardH + gap);
+
+      // Fondo de tarjeta
+      roundRect(x, y, cardW, cardH, 12);
+      ctx.fillStyle = cardBg;
+      ctx.fill();
+      ctx.strokeStyle = cardBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Barra de acento a la izquierda
+      roundRect(x, y, 4, cardH, 2);
+      ctx.fillStyle = accent;
+      ctx.fill();
+
+      // Título
+      ctx.fillStyle = textMuted;
+      ctx.font = '500 13px Outfit, sans-serif';
+      ctx.fillText(card.title, x + 20, y + 30);
+
+      // Valor
+      ctx.fillStyle = textMain;
+      ctx.font = '700 32px Outfit, sans-serif';
+      ctx.fillText(card.value, x + 20, y + 72);
+
+      // Descripción
+      ctx.fillStyle = textMuted;
+      ctx.font = '400 12px Outfit, sans-serif';
+      ctx.fillText(card.desc, x + 20, y + 98);
+    });
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showKpiFeedback(btn, true);
+      } catch (err) {
+        console.warn('No fue posible copiar la imagen; se descargará.', err);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `resumen_${slugify(k.comunidad)}.png`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        showKpiFeedback(btn, false);
+      }
+    }, 'image/png');
+  }
+
+  const copyKpiTextBtn  = document.getElementById('copy-kpi-text');
+  const copyKpiImageBtn = document.getElementById('copy-kpi-image');
+  if (copyKpiTextBtn)  copyKpiTextBtn.addEventListener('click', () => copyKPIText(copyKpiTextBtn));
+  if (copyKpiImageBtn) copyKpiImageBtn.addEventListener('click', () => copyKPIImage(copyKpiImageBtn));
 
   // ─── 9. Cambio de tema ───────────────────────────────────────────────────────
   function applyTheme() {
