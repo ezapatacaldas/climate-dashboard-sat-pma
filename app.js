@@ -598,6 +598,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ─── 3. KPIs ─────────────────────────────────────────────────────────────────
+  const NO_DATA = 'Información no disponible';
+
   function renderKPIs() {
     kpisContainer.innerHTML = '';
 
@@ -610,65 +612,97 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tmaxList = datos.map(d => d.tmax).filter(t => t !== null && t !== undefined);
     const tminList = datos.map(d => d.tmin).filter(t => t !== null && t !== undefined);
 
-    const avgTmax  = tmaxList.length > 0 ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
-    const avgTmin  = tminList.length > 0 ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
+    const hasTmax = tmaxList.length > 0;
+    const hasTmin = tminList.length > 0;
 
-    const totalPrec  = datos.reduce((acc, d) => acc + (d.precipitacion || 0), 0);
+    const avgTmax  = hasTmax ? tmaxList.reduce((a, b) => a + b, 0) / tmaxList.length : 0;
+    const avgTmin  = hasTmin ? tminList.reduce((a, b) => a + b, 0) / tminList.length : 0;
+
+    // Lluvia: se considera "sin datos" si ningún registro trae valor de precipitación
+    const precList   = datos.map(d => d.precipitacion).filter(p => p !== null && p !== undefined);
+    const hasPrec    = precList.length > 0;
+    const totalPrec  = precList.reduce((acc, p) => acc + p, 0);
     const diasLluvia = datos.filter(d => (d.precipitacion || 0) > 0).length;
+    const pctLluvia  = precList.length > 0 ? ((diasLluvia / precList.length) * 100).toFixed(0) : 0;
 
-    const pctLluvia = datos.length > 0 ? ((diasLluvia / datos.length) * 100).toFixed(0) : 0;
+    // Nivel del río: categórico (Alto/Medio/Bajo)
+    const conteosRio = { Alto: 0, Medio: 0, Bajo: 0 };
+    datos.forEach(d => {
+      const n = (d.nivel_rio || '').charAt(0).toUpperCase() + (d.nivel_rio || '').slice(1).toLowerCase();
+      if (conteosRio.hasOwnProperty(n)) conteosRio[n]++;
+    });
+    const totalRio = Object.values(conteosRio).reduce((a, b) => a + b, 0);
+    const hasRio   = totalRio > 0;
+
+    // Nivel predominante (categoría con más días)
+    let nivelPredom = '—';
+    if (hasRio) {
+      nivelPredom = Object.keys(conteosRio).reduce((a, b) => conteosRio[a] >= conteosRio[b] ? a : b);
+    }
+    const desgloseRio = `Alto: ${conteosRio.Alto} · Medio: ${conteosRio.Medio} · Bajo: ${conteosRio.Bajo} (días)`;
 
     // Guardar valores para las funciones de copiado (texto e imagen)
     lastKPIStats = {
       comunidad: currentViewState,
       departamento: info.departamento,
-      avgTmax: tmaxList.length > 0 ? avgTmax.toFixed(1) : 'N/D',
-      avgTmin: tminList.length > 0 ? avgTmin.toFixed(1) : 'N/D',
-      totalPrec: totalPrec.toFixed(1),
-      diasLluvia,
-      pctLluvia
+      avgTmax: hasTmax ? avgTmax.toFixed(1) : null,
+      avgTmin: hasTmin ? avgTmin.toFixed(1) : null,
+      totalPrec: hasPrec ? totalPrec.toFixed(1) : null,
+      diasLluvia: hasPrec ? diasLluvia : null,
+      pctLluvia: hasPrec ? pctLluvia : null,
+      nivelRio: hasRio ? nivelPredom : null,
+      conteosRio: hasRio ? { ...conteosRio } : null
     };
+
+    const ICON_TMAX  = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`;
+    const ICON_PREC  = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>`;
+    const ICON_DIAS  = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`;
+    const ICON_RIO   = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5c3-1.5 6 1.5 9 0s6-1.5 9 0M3 12c3-1.5 6 1.5 9 0s6-1.5 9 0M3 16.5c3-1.5 6 1.5 9 0s6-1.5 9 0" /></svg>`;
 
     // Card 1: Temp máx. promedio
     createKPICard(
       'Temperatura máx. promedio',
-      `${avgTmax.toFixed(1)} °C`,
-      'Promedio de las temperaturas máximas diarias',
-      styleType,
-      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
+      hasTmax ? `${avgTmax.toFixed(1)} °C` : NO_DATA,
+      hasTmax ? 'Promedio de las temperaturas máximas diarias' : 'Sin registros de temperatura en el periodo',
+      styleType, ICON_TMAX, !hasTmax
     );
 
     // Card 2: Temp mín. promedio
     createKPICard(
       'Temperatura mín. promedio',
-      `${avgTmin.toFixed(1)} °C`,
-      'Promedio de las temperaturas mínimas diarias',
-      styleType,
-      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v15m0-15a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm0 15a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" /></svg>`
+      hasTmin ? `${avgTmin.toFixed(1)} °C` : NO_DATA,
+      hasTmin ? 'Promedio de las temperaturas mínimas diarias' : 'Sin registros de temperatura en el periodo',
+      styleType, ICON_TMAX, !hasTmin
     );
 
     // Card 3: Lluvia acumulada
     createKPICard(
       'Lluvia acumulada',
-      `${totalPrec.toFixed(1)} mm`,
-      'Cantidad de lluvia total durante el periodo',
-      styleType,
-      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>`
+      hasPrec ? `${totalPrec.toFixed(1)} mm` : NO_DATA,
+      hasPrec ? 'Cantidad de lluvia total durante el periodo' : 'Sin registros de lluvia en el periodo',
+      styleType, ICON_PREC, !hasPrec
     );
 
     // Card 4: Días de lluvia
     createKPICard(
       'Días de lluvia',
-      `${diasLluvia} días`,
-      `${pctLluvia}% del periodo con eventos de lluvia`,
-      styleType,
-      `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.008 1.24l.885 1.77a2.25 2.25 0 0 0 2.007 1.24h1.98a2.25 2.25 0 0 0 2.007-1.24l.885-1.77a2.25 2.25 0 0 1 2.007-1.24h3.86m-18 0h18" /></svg>`
+      hasPrec ? `${diasLluvia} días` : NO_DATA,
+      hasPrec ? `${pctLluvia}% del periodo con eventos de lluvia` : 'Sin registros de lluvia en el periodo',
+      styleType, ICON_DIAS, !hasPrec
+    );
+
+    // Card 5: Nivel del río (predominante + desglose)
+    createKPICard(
+      'Nivel del río',
+      hasRio ? nivelPredom : NO_DATA,
+      hasRio ? desgloseRio : 'Sin registros de nivel del río en el periodo',
+      styleType, ICON_RIO, !hasRio
     );
   }
 
-  function createKPICard(title, value, desc, styleType, iconSvg) {
+  function createKPICard(title, value, desc, styleType, iconSvg, isEmpty) {
     const card = document.createElement('div');
-    card.className = 'kpi-card';
+    card.className = 'kpi-card' + (isEmpty ? ' kpi-card-empty' : '');
     card.setAttribute('data-style', styleType);
     card.innerHTML = `
       <div class="kpi-header">
@@ -1079,13 +1113,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function copyKPIText(btn) {
     if (!lastKPIStats) return;
     const k = lastKPIStats;
+    const ND = 'Información no disponible';
+
+    const lineaTmax = k.avgTmax !== null ? `${k.avgTmax} °C` : ND;
+    const lineaTmin = k.avgTmin !== null ? `${k.avgTmin} °C` : ND;
+    const lineaLluvia = k.totalPrec !== null ? `${k.totalPrec} mm` : ND;
+    const lineaDias = k.diasLluvia !== null ? `${k.diasLluvia} días (${k.pctLluvia}% del periodo)` : ND;
+    const lineaRio = k.nivelRio !== null
+      ? `${k.nivelRio} (Alto: ${k.conteosRio.Alto} · Medio: ${k.conteosRio.Medio} · Bajo: ${k.conteosRio.Bajo} días)`
+      : ND;
 
     const texto =
 `*${k.comunidad}* — ${periodDescriptor()}
-🌡️ Temp. máx. promedio: ${k.avgTmax}${k.avgTmax !== 'N/D' ? ' °C' : ''}
-🌡️ Temp. mín. promedio: ${k.avgTmin}${k.avgTmin !== 'N/D' ? ' °C' : ''}
-🌧️ Lluvia acumulada: ${k.totalPrec} mm
-📅 Días de lluvia: ${k.diasLluvia} días (${k.pctLluvia}% del periodo)`;
+🌡️ Temp. máx. promedio: ${lineaTmax}
+🌡️ Temp. mín. promedio: ${lineaTmin}
+🌧️ Lluvia acumulada: ${lineaLluvia}
+📅 Días de lluvia: ${lineaDias}
+🌊 Nivel del río: ${lineaRio}`;
 
     try {
       await navigator.clipboard.writeText(texto);
@@ -1109,12 +1153,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   function copyKPIImage(btn) {
     if (!lastKPIStats) return;
     const k = lastKPIStats;
+    const ND = 'Información no disponible';
     const dpr = window.devicePixelRatio || 1;
 
-    // Lienzo: encabezado + grilla 2x2 de tarjetas
-    const W = 620, cardW = 290, cardH = 120, gap = 20, padX = 20;
+    // Tarjetas (incluye río). Con 5, la grilla es 2 columnas × 3 filas.
+    const cards = [
+      { title: 'Temperatura máx. promedio', value: k.avgTmax !== null ? `${k.avgTmax} °C` : ND, desc: k.avgTmax !== null ? 'Promedio de las máximas diarias' : 'Sin registros en el periodo', empty: k.avgTmax === null },
+      { title: 'Temperatura mín. promedio', value: k.avgTmin !== null ? `${k.avgTmin} °C` : ND, desc: k.avgTmin !== null ? 'Promedio de las mínimas diarias' : 'Sin registros en el periodo', empty: k.avgTmin === null },
+      { title: 'Lluvia acumulada', value: k.totalPrec !== null ? `${k.totalPrec} mm` : ND, desc: k.totalPrec !== null ? 'Cantidad de lluvia total del periodo' : 'Sin registros en el periodo', empty: k.totalPrec === null },
+      { title: 'Días de lluvia', value: k.diasLluvia !== null ? `${k.diasLluvia} días` : ND, desc: k.diasLluvia !== null ? `${k.pctLluvia}% del periodo con lluvia` : 'Sin registros en el periodo', empty: k.diasLluvia === null },
+      { title: 'Nivel del río', value: k.nivelRio !== null ? k.nivelRio : ND, desc: k.nivelRio !== null ? `Alto: ${k.conteosRio.Alto} · Medio: ${k.conteosRio.Medio} · Bajo: ${k.conteosRio.Bajo} (días)` : 'Sin registros en el periodo', empty: k.nivelRio === null }
+    ];
+
+    const cardW = 290, cardH = 120, gap = 20, padX = 20;
     const headerH = 70;
-    const H = headerH + cardH * 2 + gap + 20;
+    const cols = 2;
+    const rows = Math.ceil(cards.length / cols);
+    const W = padX * 2 + cardW * cols + gap * (cols - 1);
+    const H = headerH + cardH * rows + gap * (rows - 1) + 20;
 
     const canvas = document.createElement('canvas');
     canvas.width = W * dpr;
@@ -1141,14 +1197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     ctx.font = '400 13px Outfit, sans-serif';
     ctx.fillText(`${k.departamento} · ${periodDescriptor()}`, padX, 52);
 
-    // Tarjetas
-    const cards = [
-      { title: 'Temperatura máx. promedio', value: `${k.avgTmax}${k.avgTmax !== 'N/D' ? ' °C' : ''}`, desc: 'Promedio de las máximas diarias' },
-      { title: 'Temperatura mín. promedio', value: `${k.avgTmin}${k.avgTmin !== 'N/D' ? ' °C' : ''}`, desc: 'Promedio de las mínimas diarias' },
-      { title: 'Lluvia acumulada', value: `${k.totalPrec} mm`, desc: 'Cantidad de lluvia total del periodo' },
-      { title: 'Días de lluvia', value: `${k.diasLluvia} días`, desc: `${k.pctLluvia}% del periodo con lluvia` }
-    ];
-
     function roundRect(x, y, w, h, r) {
       ctx.beginPath();
       ctx.moveTo(x + r, y);
@@ -1160,8 +1208,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     cards.forEach((card, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
+      const col = i % cols;
+      const row = Math.floor(i / cols);
       const x = padX + col * (cardW + gap);
       const y = headerH + row * (cardH + gap);
 
@@ -1175,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Barra de acento a la izquierda
       roundRect(x, y, 4, cardH, 2);
-      ctx.fillStyle = accent;
+      ctx.fillStyle = card.empty ? textMuted : accent;
       ctx.fill();
 
       // Título
@@ -1183,10 +1231,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       ctx.font = '500 13px Outfit, sans-serif';
       ctx.fillText(card.title, x + 20, y + 30);
 
-      // Valor
-      ctx.fillStyle = textMain;
-      ctx.font = '700 32px Outfit, sans-serif';
-      ctx.fillText(card.value, x + 20, y + 72);
+      // Valor (más pequeño si es el mensaje de no disponible)
+      ctx.fillStyle = card.empty ? textMuted : textMain;
+      if (card.empty) {
+        ctx.font = '600 15px Outfit, sans-serif';
+        ctx.fillText(card.value, x + 20, y + 66);
+      } else {
+        ctx.font = '700 32px Outfit, sans-serif';
+        ctx.fillText(card.value, x + 20, y + 72);
+      }
 
       // Descripción
       ctx.fillStyle = textMuted;

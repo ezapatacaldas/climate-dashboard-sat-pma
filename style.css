@@ -566,6 +566,12 @@ body.light-theme .copy-kpi-btn {
   background: rgba(15, 23, 42, 0.03);
 }
 
+.kpi-card-empty .kpi-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .kpis-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
