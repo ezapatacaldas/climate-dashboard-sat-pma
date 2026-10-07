@@ -528,21 +528,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       scrollWheelZoom: false
     }).setView([-1.2, -73.2], 6);
 
+    // Teselas de OpenStreetMap estándar (gratuitas, sin API key).
+    // Para el tema oscuro se aplica un filtro CSS sobre las mismas teselas
+    // (clase 'map-tiles-dark'), evitando proveedores que exijan key.
+    const osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
     tileLayerDark = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+        attribution: osmAttribution,
+        subdomains: 'abc',
+        maxZoom: 19,
+        className: 'map-tiles-dark'
       }
     );
 
     tileLayerLight = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+        attribution: osmAttribution,
+        subdomains: 'abc',
+        maxZoom: 19
       }
     );
 
@@ -757,6 +763,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tminData = datos.map(d => d.tmin);
     const precData = datos.map(d => d.precipitacion);
 
+    // Tope del eje de lluvia: 100 mm fijo, salvo que algún día lo supere
+    // (en ese caso se expande al múltiplo de 20 superior, para no ocultar datos).
+    const precMax  = precData.reduce((m, p) => (p !== null && p !== undefined && p > m ? p : m), 0);
+    const rainYMax = precMax > 100 ? Math.ceil(precMax / 20) * 20 : 100;
+
     tempChartInstance = new Chart(tempCtx, {
       type: 'line',
       data: {
@@ -795,7 +806,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         interaction: { intersect: false, mode: 'index' },
         scales: {
           x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
-          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } } }
+          // Escala fija para comparar meses entre sí (15–50 °C)
+          y: { min: 15, max: 50, grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Grados (°C)', color: tickColor } }
         }
       }
     });
@@ -819,7 +831,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         plugins: { legend: { display: false } },
         scales: {
           x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit', size: 10 } } },
-          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Lluvia (mm)', color: tickColor } }
+          // Escala fija 0–100 mm para comparar meses entre sí. Si algún día
+          // supera los 100 mm, el tope se expande para no ocultar ese dato.
+          y: { min: 0, max: rainYMax, grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Outfit' } }, title: { display: true, text: 'Lluvia (mm)', color: tickColor } }
         }
       }
     });

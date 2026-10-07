@@ -722,16 +722,14 @@ body.light-theme .copy-kpi-btn {
   background: #0f172a !important;
 }
 
-.leaflet-tile {
+/* Filtro oscuro solo sobre la capa marcada como oscura (tema oscuro).
+   La capa clara (tema claro) se muestra con los colores naturales de OSM. */
+.map-tiles-dark {
   filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
 }
 
 body.light-theme .leaflet-container {
   background: #f1f5f9 !important;
-}
-
-body.light-theme .leaflet-tile {
-  filter: none !important;
 }
 
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
